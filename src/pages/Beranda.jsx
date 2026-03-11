@@ -11,46 +11,66 @@ const stats = [
 
 export default function Beranda() {
   return (
-    <div className="space-y-10 pb-10">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
+    <div className="space-y-8 pb-16">
+      <header className="flex flex-col gap-1">
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-emerald-600 font-bold text-[10px] tracking-widest uppercase"
+        >
+          <span>Selamat Datang</span>
+        </motion.div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <motion.h1
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-extrabold tracking-tight text-slate-900"
+            transition={{ delay: 0.1 }}
+            className="text-4xl font-black tracking-tight text-slate-800 leading-tight"
           >
-            Halo, <span className="text-emerald-600">Traveler!</span>
+            Eksplorasi <span className="gradient-text">Kapuas</span><br />
+            Lebih Cerdas.
           </motion.h1>
-          <p className="mt-2 text-lg text-slate-500 font-medium">
-            Temukan destinasi tersembunyi di Kabupaten Kapuas hari ini.
-          </p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="md:max-w-[280px] text-sm text-slate-500 font-medium leading-relaxed"
+          >
+            Sistem rekomendasi wisata berbasis <span className="text-slate-900 font-bold italic">Hybrid Intelligence</span> untuk Anda.
+          </motion.p>
         </div>
       </header>
 
-      <section className="relative h-[450px] rounded-[40px] overflow-hidden group shadow-2xl shadow-emerald-100/50">
+      <section className="relative h-[400px] rounded-[2.5rem] overflow-hidden group shadow-xl shadow-emerald-200/15 border border-white/40">
         <img
           src="/images/hero.png"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
           alt="Kapuas"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-12">
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent flex flex-col justify-end p-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, duration: 0.6 }}
             className="max-w-2xl"
           >
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-xs font-bold mb-6">
-              <Flame size={14} className="text-amber-400" />
-              DESTINASI UNGGULAN MINGGU INI
+            <div className="inline-flex items-center gap-2 bg-emerald-500/20 backdrop-blur-xl px-4 py-1.5 rounded-full text-emerald-300 text-[9px] font-black tracking-[0.15em] mb-6 border border-emerald-500/20">
+              <Flame size={12} className="text-amber-400" />
+              DESTINASI UNGGULAN
             </div>
-            <h2 className="text-4xl font-bold text-white mb-4 leading-tight">Keajaiban Sungai Kapuas: Eksplorasi Budaya & Alam</h2>
-            <p className="text-slate-200 mb-8 text-lg font-medium opacity-90 leading-relaxed">
-              Jelajahi keindahan sungai terpanjang di Indonesia dengan pengalaman yang belum pernah Anda rasakan sebelumnya.
+            <h2 className="text-3xl font-black text-white mb-4 leading-tight">Pesona Sungai Kapuas: Antara Tradisi & Alam</h2>
+            <p className="text-white/80 mb-8 text-base font-medium opacity-90 leading-relaxed max-w-lg">
+              Temukan harmoni kehidupan masyarakat bantaran sungai dengan keasrian hutan Kalimantan.
             </p>
-            <button className="bg-white text-emerald-600 px-8 py-4 rounded-2xl font-bold flex items-center gap-3 transition-all hover:gap-5 hover:bg-slate-50 shadow-xl shadow-black/20">
-              Mulai Eksplorasi Sekarang <ArrowRight size={20} />
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button className="btn-primary flex items-center gap-2 !py-2.5 !px-6 !text-sm">
+                Mulai Eksplorasi <ArrowRight size={16} />
+              </button>
+              <button className="px-6 py-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-bold hover:bg-white/20 transition-all">
+                Lihat Video
+              </button>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -59,45 +79,56 @@ export default function Beranda() {
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white p-7 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 flex flex-col gap-4 group hover:border-emerald-100 transition-colors"
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.08 }}
+            className="glass-card glass-card-hover p-6 flex flex-col gap-4"
           >
-            <div className={`w-14 h-14 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center transition-transform group-hover:rotate-12`}>
-              <stat.icon size={28} />
+            <div className={`w-12 h-12 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-inner`}>
+              <stat.icon size={24} />
             </div>
             <div>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-wider">{stat.label}</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{stat.value}</p>
+              <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mb-0.5">{stat.label}</p>
+              <p className="text-3xl font-black text-slate-800 tracking-tighter">{stat.value}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      <section className="bg-white rounded-[40px] p-12 border border-slate-100 shadow-xl shadow-slate-200/30">
-        <div className="flex flex-col lg:flex-row gap-12 items-center">
+      <section className="glass-card p-10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-emerald-500/5 to-transparent pointer-events-none"></div>
+        <div className="flex flex-col lg:flex-row gap-10 items-center relative z-10">
           <div className="flex-1 space-y-6">
-            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">Cerdas Dalam Memilih Destinasi</h3>
-            <p className="text-slate-500 text-lg leading-relaxed font-medium">
-              Sistem SRWK menggunakan teknologi <span className="text-emerald-600 font-bold underline decoration-emerald-200 decoration-4">Hybrid Recommendation</span> untuk memastikan setiap tempat yang kami sarankan benar-benar sesuai dengan preferensi unik Anda.
+            <div className="inline-block px-3 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-black tracking-widest uppercase">Teknologi Cerdas</div>
+            <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-tight">Rekomendasi Personal</h3>
+            <p className="text-slate-500 text-base leading-relaxed font-medium">
+              Sistem <span className="text-slate-800 font-bold underline decoration-emerald-400/30 decoration-4 underline-offset-[-2px]">SRWK Kapuas</span> memberikan saran destinasi yang paling relevan dengan minat Anda.
             </p>
-            <div className="max-w-xs">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="font-bold text-slate-700">Akurasi Tinggi</p>
-                <p className="text-xs text-slate-500 mt-1">98.5% Kesenangan Pengguna</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 bg-white shadow-sm border border-slate-50 rounded-2xl">
+                <p className="font-black text-slate-800 text-xl tracking-tighter">98.5%</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase mt-0.5">Akurasi</p>
+              </div>
+              <div className="p-4 bg-white shadow-sm border border-slate-50 rounded-2xl">
+                <p className="font-black text-slate-800 text-xl tracking-tighter">Instant</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase mt-0.5">Cepat</p>
               </div>
             </div>
           </div>
-          <div className="lg:w-1/3">
+          <div className="lg:w-1/3 flex justify-center">
             <div className="relative">
-              <div className="w-full aspect-square bg-emerald-50 rounded-full flex items-center justify-center p-8">
-                <div className="w-full h-full bg-white rounded-full shadow-2xl flex items-center justify-center">
-                  <Compass className="text-emerald-600" size={80} strokeWidth={1} />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
+                className="w-60 h-60 bg-gradient-to-tr from-emerald-50 to-sky-50 rounded-full flex items-center justify-center p-10 border border-emerald-100/50 shadow-inner"
+              >
+                <div className="w-full h-full bg-white rounded-full shadow-lg flex items-center justify-center border border-slate-50">
+                  <Compass className="text-emerald-500" size={60} strokeWidth={0.5} />
                 </div>
-              </div>
-              <div className="absolute top-0 right-0 w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center shadow-lg -rotate-12 animate-bounce">
-                <Star className="text-amber-500" fill="currentColor" size={24} />
+              </motion.div>
+              <div className="absolute -top-2 -right-2 bg-white/90 backdrop-blur-md p-3 rounded-xl shadow-xl border border-white/50 animate-float">
+                <Star className="text-amber-500 fill-amber-500" size={20} />
               </div>
             </div>
           </div>
