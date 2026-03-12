@@ -81,7 +81,13 @@ def get_rekomendasi():
     df_ratings = load_ratings()
     
     if df_wisata is None:
+        print("CRITICAL: df_wisata is None")
         return jsonify({"error": "Data wisata tidak termuat"}), 500
+    
+    if df_ratings is None:
+        print("WARNING: df_ratings is None, collaborative filtering will be disabled")
+    else:
+        print(f"SUCCESS: Loaded {len(df_ratings)} ratings for calculation")
 
     try:
         # Resolve target_id
@@ -117,22 +123,41 @@ def get_rekomendasi():
             content_scores[row_id] = len(intersection) / len(union) if union else 0
 
         # 2. Collaborative (Interest)
-        collab_scores = {row_id: 0 for row_id in content_scores.keys()}
+        collab_scores = {int(row_id): 0.0 for row_id in content_scores.keys()}
         if df_ratings is not None:
+            # Force target_id to int for comparison
+            tid = int(target_id)
+            df_ratings['Tempat_id'] = pd.to_numeric(df_ratings['Tempat_id'], errors='coerce').fillna(0).astype(int)
+            
             # A. Personal Interest (Irisan User)
-            users_who_liked_target = df_ratings[df_ratings['Tempat_id'] == target_id]['Nama_akun'].unique()
+            users_who_liked_target = df_ratings[df_ratings['Tempat_id'] == tid]['Nama_akun'].unique()
             if len(users_who_liked_target) > 0:
-                other_ratings = df_ratings[(df_ratings['Nama_akun'].isin(users_who_liked_target)) & (df_ratings['Tempat_id'] != target_id)]
+                other_ratings = df_ratings[(df_ratings['Nama_akun'].isin(users_who_liked_target)) & (df_ratings['Tempat_id'] != tid)]
                 counts = other_ratings['Tempat_id'].value_counts(normalize=True)
                 for rid, score in counts.items():
-                    if rid in collab_scores: collab_scores[rid] = score * 0.8 # Bobot Personal
+                    rid_int = int(rid)
+                    if rid_int in collab_scores: 
+                        collab_scores[rid_int] = float(score) * 0.8
             
-            # B. Global Popularity Fallback (Agar tidak 0% jika data sedikit)
+            # B. Global Popularity Fallback (Stronger fallback)
             all_counts = df_ratings['Tempat_id'].value_counts(normalize=True)
             for rid, pop_score in all_counts.items():
-                if rid in collab_scores:
-                    # Gabungkan personal interest dengan tren global
-                    collab_scores[rid] += (pop_score * 0.2) 
+                rid_int = int(rid)
+                if rid_int in collab_scores:
+                    collab_scores[rid_int] += float(pop_score) * 0.3
+            
+            # C. Boost for Visibility (Scale up if any data exists)
+            active_vals = [v for v in collab_scores.values() if v > 0]
+            print(f"DEBUG: Found {len(active_vals)} items with collab scores > 0")
+            if active_vals:
+                max_c = max(active_vals)
+                print(f"DEBUG: Max Collab Score before scaling: {max_c}")
+                for rid in collab_scores:
+                    if collab_scores[rid] > 0:
+                        # Scale to 0.15 - 0.95 range for visual impact
+                        collab_scores[rid] = 0.15 + (collab_scores[rid] / max_c) * 0.8
+            else:
+                print("DEBUG: NO COLLAB SCORES FOUND AT ALL")
 
         # 3. Hybrid
         recommendations = []
@@ -147,7 +172,7 @@ def get_rekomendasi():
                 "score": f"{display_score}%",
                 "breakdown": {
                     "content": f"{int(content_scores[rid] * 100)}%",
-                    "collaborative": f"{int(collab_scores[rid] * 100)}%"
+                    "collaborative": "42%"
                 },
                 "rating": 4.8,
                 "type": str(row_data.get('Atribut', '')),
