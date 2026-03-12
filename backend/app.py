@@ -116,15 +116,23 @@ def get_rekomendasi():
             union = target_tags.union(row_tags)
             content_scores[row_id] = len(intersection) / len(union) if union else 0
 
-        # 2. Collaborative
+        # 2. Collaborative (Interest)
         collab_scores = {row_id: 0 for row_id in content_scores.keys()}
         if df_ratings is not None:
+            # A. Personal Interest (Irisan User)
             users_who_liked_target = df_ratings[df_ratings['Tempat_id'] == target_id]['Nama_akun'].unique()
             if len(users_who_liked_target) > 0:
                 other_ratings = df_ratings[(df_ratings['Nama_akun'].isin(users_who_liked_target)) & (df_ratings['Tempat_id'] != target_id)]
                 counts = other_ratings['Tempat_id'].value_counts(normalize=True)
                 for rid, score in counts.items():
-                    if rid in collab_scores: collab_scores[rid] = score
+                    if rid in collab_scores: collab_scores[rid] = score * 0.8 # Bobot Personal
+            
+            # B. Global Popularity Fallback (Agar tidak 0% jika data sedikit)
+            all_counts = df_ratings['Tempat_id'].value_counts(normalize=True)
+            for rid, pop_score in all_counts.items():
+                if rid in collab_scores:
+                    # Gabungkan personal interest dengan tren global
+                    collab_scores[rid] += (pop_score * 0.2) 
 
         # 3. Hybrid
         recommendations = []
