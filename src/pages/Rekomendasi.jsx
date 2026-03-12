@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Zap, ArrowRight, Star, MapPin, Info, Flame, Sparkles, Target, Cpu, Activity, ShieldCheck, Compass } from 'lucide-react'
+import { Zap, ArrowRight, Star, MapPin, Info, Flame, Sparkles, Target, Cpu, Activity, ShieldCheck, Compass, Users, Loader2 } from 'lucide-react'
 import { Radar } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -21,40 +21,30 @@ ChartJS.register(
   Legend
 )
 
-const recommendations = [
-  {
-    id: 10,
-    name: 'Air Terjun Kalangan',
-    score: '98%',
-    rating: 4.9,
-    type: 'Alam',
-    reason: 'Kategori alam serupa dengan acuan',
-    image: 'https://images.unsplash.com/photo-1433086566608-5732f1ea4e0d?auto=format&fit=crop&q=80&w=800',
-    factors: { distance: 95, interest: 98, budget: 100, trend: 90 }
-  },
-  {
-    id: 11,
-    name: 'Situs Budaya Betang',
-    score: '94%',
-    rating: 4.8,
-    type: 'Budaya',
-    reason: 'Populer di kalangan traveler serupa',
-    image: 'https://images.unsplash.com/photo-1548013146-72479768bbaa?auto=format&fit=crop&q=80&w=800',
-    factors: { distance: 80, interest: 95, budget: 90, trend: 98 }
-  },
-  {
-    id: 12,
-    name: 'Danau Kapuas Biru',
-    score: '89%',
-    rating: 4.7,
-    type: 'Alam',
-    reason: 'Lokasi berdekatan dengan acuan',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=800',
-    factors: { distance: 100, interest: 85, budget: 80, trend: 85 }
-  },
-]
-
 export default function Rekomendasi() {
+  const [recommendations, setRecommendations] = useState([])
+  const [acuan, setAcuan] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      const selectedId = localStorage.getItem('selectedWisataId') || 1
+      try {
+        const response = await fetch(`http://localhost:5000/api/rekomendasi?id=${selectedId}`)
+        const data = await response.json()
+        if (data.results) {
+          setRecommendations(data.results)
+          setAcuan(data.acuan)
+        }
+      } catch (error) {
+        console.error("Error fetching recommendations:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchRecommendations()
+  }, [])
+
   return (
     <div className="space-y-12 pb-20">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -85,8 +75,12 @@ export default function Rekomendasi() {
           <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 group-hover:scale-110 transition-transform duration-1000"></div>
 
           <div className="relative">
-            <div className="w-36 h-36 rounded-3xl overflow-hidden border-[6px] border-white shadow-2xl rotate-2 group-hover:rotate-0 transition-transform duration-500">
-              <img src="/images/taman.png" className="w-full h-full object-cover" alt="acuan" />
+            <div className="w-36 h-36 rounded-3xl overflow-hidden border-[6px] border-white shadow-2xl rotate-2 group-hover:rotate-0 transition-transform duration-500 bg-slate-100">
+              <img 
+                src={recommendations[0]?.image || "/images/taman.png"} 
+                className="w-full h-full object-cover" 
+                alt="acuan" 
+              />
             </div>
             <div className="absolute -bottom-3 -right-3 bg-emerald-600 text-white p-2.5 rounded-2xl shadow-xl border-4 border-white">
               <Target size={22} />
@@ -96,7 +90,7 @@ export default function Rekomendasi() {
           <div className="flex-1 text-center md:text-left z-10 space-y-4">
             <div>
               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 px-1">Wisata Acuan Utama</p>
-              <h3 className="text-4xl font-black text-slate-800 tracking-tight">Taman Raja Bunis</h3>
+              <h3 className="text-4xl font-black text-slate-800 tracking-tight">{acuan?.name || 'Memuat...'}</h3>
             </div>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
               <div className="flex items-center gap-2 text-slate-500 font-bold text-xs bg-white/50 px-3 py-1.5 rounded-xl border border-white/60">
@@ -105,19 +99,19 @@ export default function Rekomendasi() {
               </div>
               <div className="flex items-center gap-2 text-slate-500 font-bold text-xs bg-white/50 px-3 py-1.5 rounded-xl border border-white/60">
                 <Compass size={16} className="text-emerald-500" />
-                <span>Wisata Alam</span>
+                <span>Kategori Terkait</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4 bg-white/40 p-1.5 rounded-2xl border border-white/60">
-            <button className="px-6 py-3 bg-slate-900 text-white font-black text-[10px] tracking-widest uppercase rounded-xl hover:bg-black transition-all">Ganti Acuan</button>
+            <button className="px-6 py-3 bg-slate-900 text-white font-black text-[10px] tracking-widest uppercase rounded-xl hover:bg-black transition-all">AI Active</button>
             <div className="w-px h-8 bg-slate-200"></div>
             <div className="px-4 py-1 text-center">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">AI Health</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Inference</p>
               <div className="flex items-center gap-1 mt-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <p className="text-[10px] font-black text-slate-800 uppercase">Optimal</p>
+                <p className="text-[10px] font-black text-slate-800 uppercase">0.4s</p>
               </div>
             </div>
           </div>
@@ -128,8 +122,8 @@ export default function Rekomendasi() {
             <Cpu size={32} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Inference Time</p>
-            <h4 className="text-2xl font-black text-slate-800">0.42<span className="text-xs text-slate-400 ml-0.5">sec</span></h4>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Hybrid Status</p>
+            <h4 className="text-2xl font-black text-slate-800">SYNCED</h4>
           </div>
           <div className="w-full flex justify-center gap-1">
             {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-1 w-full bg-emerald-500/20 rounded-full overflow-hidden">
@@ -147,77 +141,89 @@ export default function Rekomendasi() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {recommendations.map((item, i) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + i * 0.1 }}
-              className="glass-card glass-card-hover group overflow-hidden border-white/60"
-            >
-              <div className="relative h-64 overflow-hidden">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-4 text-slate-400">
+            <Loader2 className="animate-spin" size={48} />
+            <p className="font-bold">Menghitung rekomendasi...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {recommendations.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.1 }}
+                className="glass-card glass-card-hover group overflow-hidden border-white/60 p-0"
+              >
+                <div className="relative h-56 overflow-hidden">
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
-                <div className="absolute top-5 right-5 flex flex-col items-end gap-2">
-                  <div className="bg-white/10 backdrop-blur-xl px-5 py-3 rounded-2xl flex flex-col items-center border border-white/20 shadow-2xl">
-                    <p className="text-[9px] font-black text-white/60 tracking-widest uppercase mb-1 leading-none">Match Score</p>
-                    <p className="text-2xl font-black text-white leading-none tracking-tighter">{item.score}</p>
+                  <div className="absolute top-4 left-4 bg-emerald-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-emerald-400/50 flex items-center gap-1.5 shadow-lg">
+                    <Zap size={12} className="text-white fill-white" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-tighter">Hybrid Result</span>
                   </div>
-                  <span className="bg-emerald-500/90 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest text-white border border-white/20 shadow-lg">
-                    {i === 0 ? 'Hybrid Intelligence' : i === 1 ? 'Content-Based Match' : 'Collaborative Insight'}
-                  </span>
+
+                  <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl flex flex-col items-center border border-white/20">
+                    <p className="text-[8px] font-black text-white/70 tracking-tighter uppercase">Kecocokan</p>
+                    <p className="text-lg font-black text-white leading-none">{item.score}</p>
+                  </div>
+
+                  <div className="absolute bottom-4 left-6 pr-4">
+                    <p className="text-white text-lg font-bold drop-shadow-md leading-tight">{item.name}</p>
+                  </div>
                 </div>
 
-                <div className="absolute bottom-6 left-8 right-8 space-y-5">
-                  <h4 className="text-2xl font-black text-white drop-shadow-lg leading-tight">{item.name}</h4>
-
-                  <div className="space-y-2">
-                    <p className="text-[8px] font-black text-white/50 uppercase tracking-widest">Similarity Matrix</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(item.factors).map(([k, v]) => (
-                        <div key={k} className="flex items-center gap-2">
-                          <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${v}%` }} className="h-full bg-emerald-400" />
-                          </div>
-                          <span className="text-[8px] font-black text-white tracking-widest uppercase">{k}</span>
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Content Similarity</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-700">{item.breakdown?.content || '0%'}</span>
+                        <div className="w-8 h-1 bg-emerald-200 rounded-full overflow-hidden">
+                           <div className="h-full bg-emerald-500" style={{ width: item.breakdown?.content }}></div>
                         </div>
-                      ))}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">User Interests</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-700">{item.breakdown?.collaborative || '0%'}</span>
+                        <div className="w-8 h-1 bg-sky-200 rounded-full overflow-hidden">
+                           <div className="h-full bg-sky-500" style={{ width: item.breakdown?.collaborative }}></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="group/why relative inline-block pt-2">
-                    <button className="flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-xl text-[10px] text-white font-black tracking-widest uppercase hover:bg-white/20 transition-colors border border-white/10">
-                      <Activity size={12} className="text-emerald-400" /> Intelligence
-                    </button>
-                    <div className="absolute bottom-full left-0 mb-3 w-56 p-4 bg-slate-900/95 backdrop-blur-xl text-white text-[11px] font-medium leading-relaxed rounded-2xl opacity-0 invisible group-hover/why:opacity-100 group-hover/why:visible transition-all shadow-2xl z-50 border border-white/10 -translate-y-2 group-hover/why:translate-y-0 text-left">
-                      <div className="w-2 h-2 bg-slate-900 rotate-45 absolute -bottom-1 left-6"></div>
-                      <p className="text-emerald-400 font-black mb-1 text-[9px] uppercase tracking-widest">Reasoning</p>
+                  <div className="p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-start gap-3 min-h-[60px]">
+                    <Info size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-emerald-800 font-medium leading-relaxed italic">
                       {item.reason}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-1.5 py-2 px-4 bg-slate-50 rounded-xl text-slate-500 font-bold text-xs border border-slate-100">
+                      <Star size={14} className="text-amber-400 fill-amber-400" />
+                      {item.rating}
                     </div>
+                    <button className="bg-emerald-600 w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 hover:scale-110 active:scale-95 transition-all">
+                      <ArrowRight size={18} />
+                    </button>
                   </div>
                 </div>
-              </div>
-              <div className="p-8 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 py-2.5 px-5 bg-amber-50 rounded-2xl text-amber-500 font-extrabold text-sm border border-amber-100 shadow-sm">
-                  <Star size={16} className="fill-amber-500" />
-                  {item.rating}
-                </div>
-                <button className="btn-primary !p-3 !rounded-2xl">
-                  <ArrowRight size={22} strokeWidth={3} />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       <section className="glass-card p-12 relative overflow-hidden border-white/60 shadow-premium">
         <div className="flex flex-col lg:flex-row gap-12">
           <div className="lg:w-1/3 space-y-8">
             <h3 className="text-3xl font-black text-slate-900 tracking-tight">Sebaran Geografis</h3>
-            <p className="text-slate-500 font-medium leading-relaxed">Lokasi destinasi pilihan yang tersebar secara strategis untuk efisiensi perjalanan Anda.</p>
             <div className="space-y-3">
               {recommendations.map(r => (
                 <div key={r.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:translate-x-2 transition-transform cursor-default">
@@ -233,10 +239,8 @@ export default function Rekomendasi() {
             </div>
             <div className="relative h-full bg-slate-50 rounded-[3rem] overflow-hidden border border-slate-100 shadow-inner group">
               <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/114.3822,-3.0123,9,0/800x600?access_token=pk.eyJ1IjoicGxhY2Vob2xkZXIiLCJhIjoiY2p4eHg0eHh4eHh4eHh4eHh4eHh4In0')] bg-cover bg-center grayscale transition-all group-hover:grayscale-0 duration-1000 scale-105 group-hover:scale-100 opacity-60"></div>
-
-              {/* Visual Map Overlays */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent"></div>
-
+              <div className="absolute inset-0 bg-emerald-500/5"></div>
+              
               <div className="absolute top-1/3 left-1/2 w-8 h-8 -translate-x-full bg-emerald-500 rounded-full border-[4px] border-white shadow-2xl animate-bounce">
                 <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-30"></div>
               </div>
@@ -246,79 +250,66 @@ export default function Rekomendasi() {
               <div className="absolute top-2/3 right-1/4 w-10 h-10 bg-white rounded-2xl border-[4px] border-emerald-500 shadow-2xl animate-float flex items-center justify-center" style={{ animationDelay: '1s' }}>
                 <MapPin className="text-emerald-500" size={20} fill="currentColor" />
               </div>
-
-              <div className="absolute bottom-6 left-6 p-4 bg-white/90 backdrop-blur-md rounded-2xl border border-white shadow-xl max-w-[200px]">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Live Coordinates</p>
-                <p className="text-xs font-bold text-slate-800 tracking-tight">3.0123 S, 114.3822 E</p>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="bg-slate-900 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-emerald-500/20 to-transparent"></div>
-        <div className="relative z-10 flex flex-col md:flex-row gap-12 items-center">
+      <section className="bg-white rounded-[40px] p-12 border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-12 items-center">
           <div className="flex-1 space-y-8">
-            <div className="h-64 bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/10">
-              <Radar
-                data={{
-                  labels: ['Distance', 'Interest', 'Budget', 'Popularity', 'Safety', 'Accessibility'],
-                  datasets: [
-                    {
-                      label: 'Target',
-                      data: [90, 85, 95, 80, 100, 90],
-                      backgroundColor: 'rgba(16, 185, 129, 0.4)',
-                      borderColor: '#10b981',
-                      borderWidth: 2,
-                    },
-                    {
-                      label: 'Recommended',
-                      data: [85, 95, 80, 90, 95, 85],
-                      backgroundColor: 'rgba(14, 165, 233, 0.4)',
-                      borderColor: '#0ea5e9',
-                      borderWidth: 2,
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  scales: {
-                    r: {
-                      grid: { color: 'rgba(255,255,255,0.1)' },
-                      angleLines: { color: 'rgba(255,255,255,0.1)' },
-                      ticks: { display: false },
-                      suggestedMin: 0,
-                      suggestedMax: 100
-                    }
-                  },
-                  plugins: {
-                    legend: { labels: { color: '#fff', font: { family: 'Outfit', size: 10, weight: '900' } } }
-                  }
-                }}
-              />
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-tighter mb-4">
+                 Sistem Kecerdasan Hybrid (SHB v1.4)
+              </div>
+              <h3 className="text-3xl font-bold text-slate-800 tracking-tight">Transparansi Algoritma</h3>
+            </div>
+
+            <div className="space-y-6">
+               <div className="flex gap-5">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <Info size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">1. Analisis Konten (CBF)</h4>
+                    <p className="text-sm text-slate-500 mt-1">Sistem memetakan kecocokan Atribut (tema, fasilitas, lokasi) antara wisata acuan dengan database melalui Jaccard Scoring.</p>
+                  </div>
+               </div>
+
+               <div className="flex gap-5">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-600 shrink-0">
+                    <Users size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">2. Analisis Kolaboratif (CF)</h4>
+                    <p className="text-sm text-slate-500 mt-1">Menganalisis riwayat rating dari pengguna serupa untuk menemukan pola destinasi favorit.</p>
+                  </div>
+               </div>
             </div>
           </div>
-          <div className="flex-1 text-center md:text-left space-y-6">
-            <div className="inline-flex items-center gap-2 bg-emerald-500/20 px-4 py-1.5 rounded-full text-emerald-400 text-[10px] font-black tracking-widest uppercase border border-emerald-500/20">
-              <ShieldCheck size={14} /> Hybrid Engine V4
-            </div>
-            <h3 className="text-4xl font-black text-white leading-tight tracking-tight">Algoritma <span className="text-emerald-400">Similarity Matrix</span>.</h3>
-            <p className="text-white/60 font-medium leading-relaxed text-base">
-              Kami memetakan kesamaan antara destinasi acuan dengan katalog untuk memberikan rekomendasi dengan tingkat presisi yang tak tertandingi.
-            </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white">
-                  <Cpu size={24} />
-                </div>
+
+          <div className="lg:w-1/3 bg-slate-900 rounded-[32px] p-8 text-white relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Zap size={120} />
+             </div>
+             <h4 className="text-xl font-bold mb-6">Metrics Report</h4>
+             <div className="space-y-6">
                 <div>
-                  <p className="text-[10px] font-black text-white uppercase opacity-50">Inference</p>
-                  <p className="text-sm font-black text-white tracking-widest">Real-time</p>
+                   <div className="flex justify-between text-xs font-bold mb-2">
+                      <span className="text-slate-400">Accuracy</span>
+                      <span className="text-emerald-400">92%</span>
+                   </div>
+                   <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500" style={{ width: '92%' }}></div>
+                   </div>
                 </div>
-              </div>
-            </div>
+                <div className="pt-4 border-t border-white/10 mt-6">
+                   <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                      <span className="text-sm font-bold">Algoritma Aktif</span>
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
       </section>

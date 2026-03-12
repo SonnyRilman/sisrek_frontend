@@ -1,32 +1,55 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Star, MapPin, Search, CheckCircle2, SlidersHorizontal, Grid, List, Map as MapIcon } from 'lucide-react'
-
-const tourismData = [
-  { id: 1, name: 'Taman Raja Bunis', rating: 4.8, type: 'Alam', price: 'Gratis', image: '/images/taman.png' },
-  { id: 2, name: 'Huma Betang', rating: 4.9, type: 'Budaya', price: 'Rp 10k', image: '/images/huma.png' },
-  { id: 3, name: 'Sungai Kapuas Keramat', rating: 4.7, type: 'Religi', price: 'Rp 5k', image: '/images/hero.png' },
-  { id: 4, name: 'Pasar Terapung Kapuas', rating: 4.6, type: 'Kuliner', price: 'Gratis', image: '/images/taman.png' },
-  { id: 5, name: 'Monumen Sejarah', rating: 4.5, type: 'Sejarah', price: 'Gratis', image: '/images/huma.png' },
-  { id: 6, name: 'Hutan Pinus Kapuas', rating: 4.8, type: 'Alam', price: 'Rp 15k', image: '/images/hero.png' },
-]
+import { Star, MapPin, Search, CheckCircle2, SlidersHorizontal, Grid, List, Map as MapIcon, Loader2 } from 'lucide-react'
 
 export default function DaftarWisata() {
-  const [selectedId, setSelectedId] = useState(10)
+  const [tourismData, setTourismData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('Semua')
   const [sortBy, setSortBy] = useState('Default')
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/wisata')
+        const data = await response.json()
+        setTourismData(data)
+        
+        // Cek jika ada yang sudah tersimpan di localStorage
+        const savedId = localStorage.getItem('selectedWisataId')
+        if (savedId) {
+          setSelectedId(parseInt(savedId))
+        } else if (data.length > 0) {
+          setSelectedId(data[0].id)
+          localStorage.setItem('selectedWisataId', data[0].id)
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const handleSelect = (id) => {
+    setSelectedId(id)
+    localStorage.setItem('selectedWisataId', id)
+  }
 
   const categories = ['Semua', 'Alam', 'Budaya', 'Religi', 'Kuliner', 'Taman']
 
   const filteredDestinations = tourismData
     .filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (activeCategory === 'Semua' || item.type === activeCategory)
+      (item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       item.type?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (activeCategory === 'Semua' || item.type?.toLowerCase().includes(activeCategory.toLowerCase()))
     )
     .sort((a, b) => {
-      if (sortBy === 'Rating') return b.rating - a.rating
-      if (sortBy === 'Nama') return a.name.localeCompare(b.name)
+      if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
+      if (sortBy === 'Nama') return (a.name || '').localeCompare(b.name || '')
       return 0
     })
 
@@ -97,18 +120,24 @@ export default function DaftarWisata() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-        <AnimatePresence mode="popLayout">
-          {filteredDestinations.map((item, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {loading ? (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4 text-slate-400">
+            <Loader2 className="animate-spin" size={48} />
+            <p className="font-bold">Memuat data wisata...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {filteredDestinations.map((item, i) => (
             <motion.div
               key={item.id}
               layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-              transition={{ duration: 0.4, delay: i * 0.05 }}
-              onClick={() => setSelectedId(item.id)}
-              className={`group relative bg-white rounded-[2.5rem] overflow-hidden border-2 cursor-pointer transition-all duration-500
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => handleSelect(item.id)}
+              className={`group relative bg-white rounded-[32px] overflow-hidden border cursor-pointer transition-all duration-500 transform
                 ${selectedId === item.id
                   ? 'border-emerald-500 shadow-2xl shadow-emerald-200/40 ring-8 ring-emerald-50'
                   : 'border-transparent shadow-xl shadow-slate-200/30 hover:shadow-2xl hover:shadow-emerald-100/50 hover:border-emerald-200'
@@ -181,10 +210,11 @@ export default function DaftarWisata() {
               </div>
             </motion.div>
           ))}
-        </AnimatePresence>
+          </AnimatePresence>
+        )}
       </div>
 
-      {filteredDestinations.length === 0 && (
+      {filteredDestinations.length === 0 && !loading && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

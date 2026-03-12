@@ -1,15 +1,32 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, Star, TrendingUp, Users, ArrowRight, Flame, Compass } from 'lucide-react'
-
-const stats = [
-  { label: 'Destinasi', value: '45+', icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { label: 'Rating Rata-rata', value: '4.8', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-  { label: 'Wisata Populer', value: '12', icon: TrendingUp, color: 'text-sky-500', bg: 'bg-sky-50' },
-  { label: 'Pengguna Aktif', value: '1.2k', icon: Users, color: 'text-rose-500', bg: 'bg-rose-50' },
-]
+import { MapPin, Star, TrendingUp, Users, ArrowRight, Flame, Compass, Loader2 } from 'lucide-react'
 
 export default function Beranda() {
+  const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/summary')
+        const data = await response.json()
+        setSummary(data)
+      } catch (error) {
+        console.error("Error fetching summary:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSummary()
+  }, [])
+
+  const stats = [
+    { label: 'Destinasi', value: summary?.total_destinasi || '...', icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Rating Rata-rata', value: summary?.avg_rating || '...', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
+    { label: 'Wisata Populer', value: summary?.populer_count || '...', icon: TrendingUp, color: 'text-sky-500', bg: 'bg-sky-50' },
+    { label: 'Pengguna Aktif', value: summary?.users_active || '...', icon: Users, color: 'text-rose-500', bg: 'bg-rose-50' },
+  ]
   return (
     <div className="space-y-8 pb-16">
       <header className="flex flex-col gap-1">

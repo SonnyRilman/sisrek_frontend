@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
 import { BarChart3, TrendingUp, Star, Users, MapPin, Compass } from 'lucide-react'
@@ -29,28 +29,6 @@ ChartJS.register(
   Filler
 )
 
-const barData = {
-  labels: ['Taman', 'Budaya', 'Alam', 'Religi', 'Kuliner'],
-  datasets: [
-    {
-      label: 'Jumlah Wisata',
-      data: [12, 19, 15, 8, 10],
-      backgroundColor: (context) => {
-        const chart = context.chart;
-        const { ctx, chartArea } = chart;
-        if (!chartArea) return null;
-        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-        gradient.addColorStop(0, '#10b981');
-        gradient.addColorStop(1, '#6ee7b7');
-        return gradient;
-      },
-      hoverBackgroundColor: '#059669',
-      borderRadius: 12,
-      barThickness: 28,
-    },
-  ],
-}
-
 const trendData = {
   labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
   datasets: [
@@ -72,20 +50,6 @@ const trendData = {
       pointBackgroundColor: '#fff',
       pointBorderColor: '#10b981',
       pointBorderWidth: 2,
-    },
-  ],
-}
-
-const pieData = {
-  labels: ['Sangat Puas', 'Puas', 'Cukup', 'Kurang'],
-  datasets: [
-    {
-      data: [45, 30, 15, 10],
-      backgroundColor: ['#10b981', '#0ea5e9', '#f59e0b', '#f43f5e'],
-      borderWidth: 0,
-      cutout: '75%',
-      borderRadius: 20,
-      spacing: 5,
     },
   ],
 }
@@ -130,6 +94,33 @@ const options = {
 }
 
 export default function Statistik() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/statistik')
+        const result = await response.json()
+        setData(result)
+      } catch (error) {
+        console.error("Error fetching stats:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center gap-4 text-slate-400">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="font-bold">Menganalisis data wisata...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8 pb-16">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -216,7 +207,7 @@ export default function Statistik() {
                 <p className="text-3xl font-black text-slate-800 tracking-tighter leading-none">4.8</p>
               </div>
             </div>
-            <Doughnut data={pieData} options={{ ...options, plugins: { ...options.plugins, legend: { display: true, position: 'bottom', labels: { padding: 20, boxWidth: 6, usePointStyle: true } } } }} />
+            <Doughnut data={data?.pieData || { labels: [], datasets: [] }} options={{ ...options, plugins: { ...options.plugins, legend: { display: true, position: 'bottom', labels: { padding: 20, boxWidth: 6, usePointStyle: true } } } }} />
           </div>
         </motion.div>
       </div>
@@ -230,7 +221,7 @@ export default function Statistik() {
             <h3 className="text-xl font-black text-slate-800 tracking-tight">Populer Kategori</h3>
           </div>
           <div className="h-64">
-            <Bar data={barData} options={options} />
+            <Bar data={data?.barData || { labels: [], datasets: [] }} options={options} />
           </div>
         </div>
 
@@ -245,27 +236,26 @@ export default function Statistik() {
             <button className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline">Full Report</button>
           </div>
           <div className="space-y-4">
-            {[
-              { name: 'Taman Raja Bunis', val: 92, count: '2.4k' },
-              { name: 'Huma Betang', val: 85, count: '1.9k' },
-              { name: 'Sungai Kapuas', val: 78, count: '1.5k' },
-              { name: 'Pasar Terapung', val: 65, count: '1.2k' },
-            ].map((item, i) => (
-              <div key={item.name} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-black text-slate-700">{item.name}</span>
-                  <span className="text-xs font-bold text-slate-400">{item.count}</span>
+            {(data?.topPerformers || []).map((item, i) => {
+              // Convert "2.4k kunjungan" to a percentage for progress bar
+              const val = Math.min(100, (parseInt(item.count.replace(/\D/g, '')) / 2500) * 100);
+              return (
+                <div key={item.name} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-black text-slate-700">{item.name}</span>
+                    <span className="text-xs font-bold text-slate-400">{item.count}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${val}%` }}
+                      transition={{ duration: 1, delay: i * 0.1 }}
+                      className="h-full bg-emerald-500 rounded-full"
+                    />
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${item.val}%` }}
-                    transition={{ duration: 1, delay: i * 0.1 }}
-                    className="h-full bg-emerald-500 rounded-full"
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
