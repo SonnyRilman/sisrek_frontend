@@ -1,156 +1,153 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { MapPin, Star, TrendingUp, Users, ArrowRight, Flame, Compass, Loader2 } from 'lucide-react'
+import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 
 export default function Beranda() {
-  const [summary, setSummary] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
-  useEffect(() => {
-    const fetchSummary = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/summary')
-        const data = await response.json()
-        setSummary(data)
-      } catch (error) {
-        console.error("Error fetching summary:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchSummary()
-  }, [])
+  // --- Mouse Parallax Effect ---
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
 
-  const stats = [
-    { label: 'Destinasi', value: summary?.total_destinasi || '...', icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Rating Rata-rata', value: summary?.avg_rating || '...', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { label: 'Wisata Populer', value: summary?.populer_count || '...', icon: TrendingUp, color: 'text-sky-500', bg: 'bg-sky-50' },
-    { label: 'Pengguna Aktif', value: summary?.users_active || '...', icon: Users, color: 'text-rose-500', bg: 'bg-rose-50' },
-  ]
+  // Smooth springs for the parallax
+  const bgX = useSpring(useTransform(mouseX, [-500, 500], [20, -20]), { stiffness: 50, damping: 30 })
+  const bgY = useSpring(useTransform(mouseY, [-500, 500], [20, -20]), { stiffness: 50, damping: 30 })
+  
+  // Magnetic Button Effect
+  const buttonX = useSpring(0, { stiffness: 200, damping: 20 })
+  const buttonY = useSpring(0, { stiffness: 200, damping: 20 })
+
+  const handleMouseMove = (e) => {
+    const { clientX, clientY } = e
+    const moveX = clientX - window.innerWidth / 2
+    const moveY = clientY - window.innerHeight / 2
+    mouseX.set(moveX)
+    mouseY.set(moveY)
+  }
+
+  const handleButtonMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const distanceX = e.clientX - centerX
+    const distanceY = e.clientY - centerY
+    
+    buttonX.set(distanceX * 0.3)
+    buttonY.set(distanceY * 0.3)
+  }
+
+  const handleButtonLeave = () => {
+    buttonX.set(0)
+    buttonY.set(0)
+  }
+
   return (
-    <div className="space-y-8 pb-16">
-      <header className="flex flex-col gap-1">
-        <motion.div
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="text-emerald-600 font-bold text-[10px] tracking-widest uppercase"
+    <div 
+      onMouseMove={handleMouseMove}
+      className="relative min-h-screen w-full flex flex-col overflow-x-hidden bg-slate-950 font-outfit select-none"
+    >
+      
+      {/* 1. Cinematic Background Layer with Parallax */}
+      <div className="fixed inset-0 z-0 overflow-hidden">
+        <motion.div 
+          style={{ x: bgX, y: bgY, scale: 1.1 }}
+          className="w-full h-full"
         >
-          <span>Selamat Datang</span>
+          <img
+            src="/kapuas_hulu_4k_hero_1773503911703.png"
+            className="w-full h-full object-cover"
+            alt="Kapuas Hulu"
+            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?auto=format&fit=crop&q=100&w=2560"; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/95"></div>
         </motion.div>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <motion.h1
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl font-black tracking-tight text-slate-800 leading-tight"
-          >
-            Eksplorasi <span className="gradient-text">Kapuas</span><br />
-            Lebih Cerdas.
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="md:max-w-[280px] text-sm text-slate-500 font-medium leading-relaxed"
-          >
-            Sistem rekomendasi wisata berbasis <span className="text-slate-900 font-bold italic">Hybrid Intelligence</span> untuk Anda.
-          </motion.p>
-        </div>
-      </header>
-
-      <section className="relative h-[400px] rounded-[2.5rem] overflow-hidden group shadow-xl shadow-emerald-200/15 border border-white/40">
-        <img
-          src="/images/hero.png"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-          alt="Kapuas"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent flex flex-col justify-end p-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="max-w-2xl"
-          >
-            <div className="inline-flex items-center gap-2 bg-emerald-500/20 backdrop-blur-xl px-4 py-1.5 rounded-full text-emerald-300 text-[9px] font-black tracking-[0.15em] mb-6 border border-emerald-500/20">
-              <Flame size={12} className="text-amber-400" />
-              DESTINASI UNGGULAN
-            </div>
-            <h2 className="text-3xl font-black text-white mb-4 leading-tight">Pesona Sungai Kapuas: Antara Tradisi & Alam</h2>
-            <p className="text-white/80 mb-8 text-base font-medium opacity-90 leading-relaxed max-w-lg">
-              Temukan harmoni kehidupan masyarakat bantaran sungai dengan keasrian hutan Kalimantan.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button className="btn-primary flex items-center gap-2 !py-2.5 !px-6 !text-sm">
-                Mulai Eksplorasi <ArrowRight size={16} />
-              </button>
-              <button className="px-6 py-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-bold hover:bg-white/20 transition-all">
-                Lihat Video
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.08 }}
-            className="glass-card glass-card-hover p-6 flex flex-col gap-4"
-          >
-            <div className={`w-12 h-12 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-inner`}>
-              <stat.icon size={24} />
-            </div>
-            <div>
-              <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mb-0.5">{stat.label}</p>
-              <p className="text-3xl font-black text-slate-800 tracking-tighter">{stat.value}</p>
-            </div>
-          </motion.div>
-        ))}
       </div>
 
-      <section className="glass-card p-10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-emerald-500/5 to-transparent pointer-events-none"></div>
-        <div className="flex flex-col lg:flex-row gap-10 items-center relative z-10">
-          <div className="flex-1 space-y-6">
-            <div className="inline-block px-3 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-black tracking-widest uppercase">Teknologi Cerdas</div>
-            <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-tight">Rekomendasi Personal</h3>
-            <p className="text-slate-500 text-base leading-relaxed font-medium">
-              Sistem <span className="text-slate-800 font-bold underline decoration-emerald-400/30 decoration-4 underline-offset-[-2px]">SRWK Kapuas</span> memberikan saran destinasi yang paling relevan dengan minat Anda.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-4 bg-white shadow-sm border border-slate-50 rounded-2xl">
-                <p className="font-black text-slate-800 text-xl tracking-tighter">98.5%</p>
-                <p className="text-[9px] text-slate-400 font-black uppercase mt-0.5">Akurasi</p>
-              </div>
-              <div className="p-4 bg-white shadow-sm border border-slate-50 rounded-2xl">
-                <p className="font-black text-slate-800 text-xl tracking-tighter">Instant</p>
-                <p className="text-[9px] text-slate-400 font-black uppercase mt-0.5">Cepat</p>
-              </div>
+      {/* 2. Content Layer Container */}
+      <div className="relative z-10 flex-1 flex flex-col items-center px-6 pb-12">
+        
+        {/* Main Hero Group */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center max-w-5xl w-full py-12">
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-8"
+          >
+            {/* Subtitle */}
+            <div className="flex items-center justify-center gap-4">
+              <div className="h-px w-8 bg-emerald-500/50"></div>
+              <p className="text-emerald-400 text-[10px] md:text-xs font-black uppercase tracking-[0.8em] pl-3">
+                The Heart of Borneo
+              </p>
+              <div className="h-px w-8 bg-emerald-500/50"></div>
             </div>
-          </div>
-          <div className="lg:w-1/3 flex justify-center">
+
+            {/* Typography with Sweep Effect */}
             <div className="relative">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
-                className="w-60 h-60 bg-gradient-to-tr from-emerald-50 to-sky-50 rounded-full flex items-center justify-center p-10 border border-emerald-100/50 shadow-inner"
-              >
-                <div className="w-full h-full bg-white rounded-full shadow-lg flex items-center justify-center border border-slate-50">
-                  <Compass className="text-emerald-500" size={60} strokeWidth={0.5} />
-                </div>
-              </motion.div>
-              <div className="absolute -top-2 -right-2 bg-white/90 backdrop-blur-md p-3 rounded-xl shadow-xl border border-white/50 animate-float">
-                <Star className="text-amber-500 fill-amber-500" size={20} />
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white tracking-tighter leading-none flex flex-col items-center">
+                <span>KAPUAS</span>
+                <span className="relative text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-800">
+                  HULU
+                  {/* Light Sweep Animation */}
+                  <motion.div 
+                    animate={{ left: ['-100%', '200%'] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 5, ease: "easeInOut" }}
+                    className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg]"
+                  ></motion.div>
+                </span>
+              </h1>
+              
+              <div className="pt-8">
+                <p className="text-emerald-300 font-bold italic text-sm md:text-xl tracking-tight inline-block border-y border-white/10 py-3 px-8 backdrop-blur-sm bg-black/5">
+                  "Bukan sekadar daftar wisata — ini rekomendasimu."
+                </p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </section>
+
+        {/* Bottom Tidy Action Pane */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 1 }}
+          className="w-full max-w-6xl mt-auto"
+        >
+          <div className="bg-slate-900/60 backdrop-blur-[40px] border border-white/10 p-6 md:p-8 rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-center gap-8 justify-between">
+            <div className="flex-1 text-center md:text-left">
+               <h4 className="text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] mb-1">Hybrid Recommender System</h4>
+               <p className="text-white/70 font-medium leading-relaxed text-xs md:text-sm lg:text-[16px] max-w-xl">
+                  Temukan destinasi yang benar-benar cocok melalui analisis metode <span className="text-emerald-400 font-bold">Content-Based</span> dan <span className="text-emerald-400 font-bold">Collaborative Filtering</span> untuk pengalaman tak terlupakan.
+               </p>
+            </div>
+            
+            <motion.button 
+              onMouseMove={handleButtonMove}
+              onMouseLeave={handleButtonLeave}
+              style={{ x: buttonX, y: buttonY }}
+              onClick={() => navigate('/daftar-wisata')}
+              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[11px] uppercase tracking-[0.2em] py-6 px-12 rounded-[2rem] flex items-center justify-center gap-3 transition-all hover:bg-emerald-400 shadow-xl shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
+            >
+              Mulai Petualangan
+              <ArrowRight size={20} />
+            </motion.button>
+          </div>
+        </motion.div>
+
+      </div>
+
+      {/* Subtle Scroll Indicator */}
+      <motion.div 
+        animate={{ y: [0, 8, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 hidden md:block"
+      >
+        <div className="w-px h-12 bg-gradient-to-b from-emerald-500 to-transparent opacity-50"></div>
+      </motion.div>
+
     </div>
   )
 }

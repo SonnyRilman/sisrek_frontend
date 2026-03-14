@@ -1,354 +1,217 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Star, MapPin, Search, CheckCircle2, SlidersHorizontal, Grid, Map as MapIcon, Loader2, Database, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Filter, ArrowRight, Loader2, MapPin, Compass, Star, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export default function DaftarWisata() {
-  const [tourismData, setTourismData] = useState([])
+  const [wisata, setWisata] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedId, setSelectedId] = useState(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [activeCategory, setActiveCategory] = useState('Semua')
-  const [sortBy, setSortBy] = useState('Default')
-  const [viewMode, setViewMode] = useState('grid') // modes: grid, database
-  
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('name')
+  const [selectedCategory, setSelectedCategory] = useState('Semua')
+  const navigate = useNavigate()
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(6)
+  const itemsPerPage = 6
+
+  const categories = ['Semua', 'Alam', 'Budaya', 'Edukasi', 'Petualangan']
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchWisata = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/wisata')
         const data = await response.json()
-        setTourismData(data)
-        
-        const savedId = localStorage.getItem('selectedWisataId')
-        if (savedId) {
-          setSelectedId(parseInt(savedId))
-        } else if (data.length > 0) {
-          setSelectedId(data[0].id)
-          localStorage.setItem('selectedWisataId', data[0].id)
-        }
+        setWisata(data || [])
       } catch (error) {
         console.error("Error fetching data:", error)
       } finally {
         setLoading(false)
       }
     }
-    fetchData()
+    fetchWisata()
   }, [])
 
-  // Reset to page 1 when filters change
+  // Reset page when filtering
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, activeCategory, sortBy])
+  }, [search, selectedCategory, sortBy])
 
-  const handleSelect = (id) => {
-    setSelectedId(id)
-    localStorage.setItem('selectedWisataId', id)
-  }
-
-  const categories = ['Semua', 'Alam', 'Budaya', 'Religi', 'Kuliner', 'Taman']
-
-  const filteredDestinations = tourismData
-    .filter(item =>
-      (item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-       item.type?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (activeCategory === 'Semua' || item.type?.toLowerCase().includes(activeCategory.toLowerCase()))
-    )
+  const filteredWisata = (wisata || [])
+    .filter(w => {
+      const matchSearch = (w.name || '').toLowerCase().includes((search || '').toLowerCase())
+      const matchCategory = selectedCategory === 'Semua' || (w.kategori || '').includes(selectedCategory)
+      return matchSearch && matchCategory
+    })
     .sort((a, b) => {
-      if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
-      if (sortBy === 'Nama') return (a.name || '').localeCompare(b.name || '')
-      return 0
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
+      return (a.name || '').localeCompare(b.name || '')
     })
 
-  // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredDestinations.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredDestinations.length / itemsPerPage)
+  const currentItems = filteredWisata.slice(indexOfFirstItem, indexOfLastItem)
+  const totalPages = Math.ceil(filteredWisata.length / itemsPerPage)
 
-  const paginate = (pageNumber) => {
-    setCurrentPage(pageNumber)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-6 text-emerald-500">
+        <Loader2 className="animate-spin" size={40} />
+        <p className="font-outfit font-black text-[10px] uppercase tracking-[0.4em]">Sinkronisasi Data...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-8 pb-16">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-emerald-600 font-bold text-[10px] tracking-widest uppercase">
-            <MapIcon size={12} />
-            <span>Destinasi Kapuas • {filteredDestinations.length} Lokasi</span>
-          </div>
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Katalog Wisata</h1>
-          <p className="text-slate-500 text-sm font-medium">Temukan inspirasi perjalanan Anda.</p>
-        </div>
-        <div className="flex p-1 bg-white shadow-sm border border-slate-100 rounded-xl">
-          <button 
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-emerald-50 text-emerald-600 shadow-inner' : 'text-slate-300 hover:text-slate-400'}`}
-          >
-            <Grid size={18} />
-          </button>
-          <button 
-            onClick={() => setViewMode('database')}
-            className={`p-2 rounded-lg transition-all ${viewMode === 'database' ? 'bg-emerald-50 text-emerald-600 shadow-inner' : 'text-slate-300 hover:text-slate-400'}`}
-          >
-            <Database size={18} />
-          </button>
-        </div>
-      </header>
-
-      <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row gap-3">
-          <div className="flex-1 relative group">
-            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-              <Search className="text-slate-300 group-focus-within:text-emerald-500 transition-colors" size={18} />
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-outfit">
+      
+      {/* 1. Sleek Modern Header */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 pt-20 pb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
+                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Sistem Rekomendasi</span>
+              </div>
+              <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-none uppercase">
+                Jelajahi <span className="text-emerald-500 underline decoration-emerald-100 underline-offset-8">Kapuas</span>
+              </h1>
+              <p className="text-slate-400 font-medium text-sm md:text-base max-w-lg leading-relaxed">
+                Terdapat <span className="text-slate-900 font-black">{filteredWisata.length} destinasi</span> yang tersedia. Pilih satu untuk mendapatkan rekomendasi menggunakan metode <span className="text-slate-900 font-bold">Collaborative</span> & <span className="text-slate-900 font-bold">Content-Based Filtering</span>.
+              </p>
             </div>
+
+            {/* Sub-Filters: Categories */}
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                    selectedCategory === cat 
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 shadow-xl' 
+                    : 'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 -mt-8 relative z-10">
+        
+        {/* 2. Concentrated Search Bar */}
+        <div className="bg-white p-3 rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)] border border-slate-100 flex flex-col md:flex-row gap-4 items-center mb-16">
+          <div className="relative flex-1 group w-full">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors" size={18} />
             <input
               type="text"
-              placeholder="Cari destinasi..."
-              className="w-full bg-white pl-12 pr-6 py-4 rounded-2xl border border-slate-200 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-50 focus:border-emerald-500 transition-all font-semibold text-slate-700 placeholder:text-slate-300 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari nama destinasi..."
+              className="w-full pl-14 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-0 font-bold text-slate-800 placeholder:text-slate-300"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <select
-              className="px-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm font-black text-slate-600 text-[10px] uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-emerald-50 appearance-none min-w-[140px] text-center"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="Default">URUTKAN</option>
-              <option value="Rating">RATING TERTINGGI</option>
-              <option value="Nama">NAMA (A-Z)</option>
-            </select>
+          
+          <div className="h-10 w-px bg-slate-100 hidden md:block"></div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto px-4">
+             <Filter size={16} className="text-slate-400" />
+             <select 
+               className="bg-transparent border-none focus:ring-0 font-black text-[11px] uppercase tracking-widest text-slate-900 cursor-pointer pr-8"
+               value={sortBy}
+               onChange={(e) => setSortBy(e.target.value)}
+             >
+               <option value="name">Urutan Alfabet</option>
+               <option value="rating">Rating Tertinggi</option>
+             </select>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2 rounded-xl text-[11px] font-black tracking-widest uppercase transition-all ${activeCategory === cat
-                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100'
-                : 'bg-white text-slate-400 border border-slate-50 hover:border-emerald-100 hover:text-emerald-600 hover:shadow-sm'
-                }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {viewMode === 'database' ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="glass-card overflow-hidden border-white/60 p-0"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">ID</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Destinasi</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Atribut/Kategori</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {currentItems.map((item) => (
-                  <tr key={item.id} className={`hover:bg-emerald-50/20 transition-colors ${selectedId === item.id ? 'bg-emerald-50/40' : ''}`}>
-                    <td className="px-6 py-4">
-                       <span className="font-mono font-bold text-slate-500 text-xs">#{item.id}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                       <p className="font-bold text-slate-800 text-sm">{item.name}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                       <div className="flex flex-wrap gap-1">
-                         {item.type.split(',').map(t => (
-                           <span key={t} className="px-2 py-0.5 bg-white border border-slate-100 rounded-md text-[9px] font-bold text-slate-500">
-                             {t.trim()}
-                           </span>
-                         ))}
-                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                       <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                          <span className="text-[10px] font-black text-emerald-600 uppercase">Synced</span>
-                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                       <button 
-                         onClick={() => handleSelect(item.id)}
-                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${selectedId === item.id ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-emerald-100'}`}
-                       >
-                         {selectedId === item.id ? 'Terpilih' : 'Pilih'}
-                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {loading ? (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4 text-slate-400">
-            <Loader2 className="animate-spin" size={48} />
-            <p className="font-bold">Memuat data wisata...</p>
-          </div>
-        ) : (
-          <AnimatePresence mode="popLayout">
+        {/* 3. Refined Exhibition Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <AnimatePresence mode='popLayout'>
             {currentItems.map((item, i) => (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => handleSelect(item.id)}
-              className={`group relative bg-white rounded-[32px] overflow-hidden border cursor-pointer transition-all duration-500 transform
-                ${selectedId === item.id
-                  ? 'border-emerald-500 shadow-2xl shadow-emerald-200/40 ring-8 ring-emerald-50'
-                  : 'border-transparent shadow-xl shadow-slate-200/30 hover:shadow-2xl hover:shadow-emerald-100/50 hover:border-emerald-200'
-                }`}
-            >
-              <div className="relative h-64 overflow-hidden">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  <span className="bg-white/95 backdrop-blur-md px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-emerald-600 border border-white/50 shadow-xl self-start">
-                    {item.type}
-                  </span>
-                  {item.rating >= 4.8 && (
-                    <span className="bg-amber-500/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white border border-amber-400/50 shadow-lg flex items-center gap-1.5">
-                      <Star size={10} fill="currentColor" /> Top Choice
-                    </span>
-                  )}
-                </div>
-
-                <AnimatePresence>
-                  {selectedId === item.id && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-emerald-600/20 backdrop-blur-[2px] flex items-center justify-center"
-                    >
-                      <motion.div
-                        initial={{ scale: 0, rotate: -45 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        className="bg-white p-5 rounded-full shadow-2xl border-4 border-emerald-50"
-                      >
-                        <CheckCircle2 size={40} className="text-emerald-600" />
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="p-7">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-xl font-black text-slate-800 leading-tight">{item.name}</h3>
-                  <div className="flex items-center gap-1.5 bg-amber-50 text-amber-500 px-2.5 py-1 rounded-lg">
-                    <Star size={14} fill="currentColor" />
-                    <span className="text-xs font-black">{item.rating}</span>
+              <motion.div
+                key={item.id || item.tempat_id}
+                layout
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.6, delay: i * 0.05, ease: [0.23, 1, 0.32, 1] }}
+                className="group bg-white rounded-[3rem] p-4 border border-slate-100 hover:border-emerald-200 transition-all duration-500 hover:shadow-[0_45px_100px_-30px_rgba(0,0,0,0.06)]"
+              >
+                {/* Image Plate */}
+                <div className="relative h-64 rounded-[2.5rem] overflow-hidden">
+                  <img
+                    src={item.image || `https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=1200`}
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                    alt={item.name}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                  
+                  {/* Rating Badge */}
+                  <div className="absolute top-5 left-5 bg-white/20 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-2">
+                     <Star size={12} className="text-emerald-400 fill-emerald-400" />
+                     <span className="text-white text-[10px] font-black">{item.rating || '0.0'}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] mb-6 uppercase tracking-widest">
-                  <MapPin size={14} className="text-emerald-500" />
-                  <span>Kuala Kapuas</span>
-                </div>
-
-                <div className="flex items-center justify-between pt-5 border-t border-slate-50">
-                  <div>
-                    <p className="text-[8px] uppercase font-black text-slate-300 tracking-widest mb-0.5">Tiket</p>
-                    <p className="text-lg font-black text-slate-700">{item.price}</p>
+                {/* Content Info */}
+                <div className="pt-6 pb-2 px-4 flex flex-col items-center text-center">
+                  <div className="flex items-center gap-2 mb-2">
+                     <MapPin size={10} className="text-emerald-500" />
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.kategori || 'Destinasi'}</span>
                   </div>
-                  <button
-                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
-                      ${selectedId === item.id
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
-                        : 'bg-slate-50 text-slate-400 hover:bg-emerald-600 hover:text-white hover:shadow-md'
-                      }`}
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight uppercase line-clamp-1 mb-6">
+                    {item.name}
+                  </h3>
+                  
+                  <button 
+                    onClick={() => {
+                       localStorage.setItem('selectedWisataId', item.id || item.tempat_id);
+                       navigate('/rekomendasi');
+                    }}
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all hover:bg-emerald-500 shadow-xl shadow-slate-200 group/btn"
                   >
-                    {selectedId === item.id ? 'Terpilih' : 'Pilih Acuan'}
+                    Dapatkan Rekomendasi
+                    <ArrowRight size={14} className="group-hover/btn:translate-x-2 transition-transform duration-300" />
                   </button>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
             ))}
           </AnimatePresence>
-        )}
-      </div>
-      )}
-
-      {/* Pagination Controls */}
-      {!loading && totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 pt-8">
-           <button
-             onClick={() => paginate(currentPage - 1)}
-             disabled={currentPage === 1}
-             className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-200 disabled:opacity-30 disabled:hover:text-slate-400 transition-all shadow-sm"
-           >
-             <ChevronLeft size={20} />
-           </button>
-           
-           <div className="flex gap-2">
-             {[...Array(totalPages)].map((_, idx) => (
-               <button
-                 key={idx + 1}
-                 onClick={() => paginate(idx + 1)}
-                 className={`w-12 h-12 rounded-2xl font-black text-sm transition-all ${currentPage === idx + 1 
-                   ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100' 
-                   : 'bg-white text-slate-400 border border-slate-100 hover:border-emerald-100 hover:text-emerald-600'}`}
-               >
-                 {idx + 1}
-               </button>
-             ))}
-           </div>
-
-           <button
-             onClick={() => paginate(currentPage + 1)}
-             disabled={currentPage === totalPages}
-             className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-200 disabled:opacity-30 disabled:hover:text-slate-400 transition-all shadow-sm"
-           >
-             <ChevronRight size={20} />
-           </button>
         </div>
-      )}
 
-      {filteredDestinations.length === 0 && !loading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="py-32 text-center space-y-6 glass-card border-dashed border-2"
-        >
-          <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border-2 border-slate-100">
-            <Search size={48} />
+        {/* 4. Elegant Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-20">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-emerald-600 disabled:opacity-20 transition-all shadow-sm"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="px-6 py-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Halaman</span>
+               <span className="text-sm font-black text-slate-900">{currentPage}</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">dari {totalPages}</span>
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-emerald-600 disabled:opacity-20 transition-all shadow-sm"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
-          <div className="space-y-2">
-            <p className="text-2xl font-black text-slate-400 tracking-tight">Oops! Destinasi tidak ditemukan.</p>
-            <p className="text-slate-400 font-medium max-w-sm mx-auto">Coba gunakan kata kunci lain atau ubah filter kategori Anda.</p>
-          </div>
-          <button
-            onClick={() => { setSearchTerm(''); setActiveCategory('Semua'); }}
-            className="text-emerald-600 font-black hover:text-emerald-700 transition-colors bg-emerald-50 px-8 py-3 rounded-xl border border-emerald-100"
-          >
-            Reset Semua Filter
-          </button>
-        </motion.div>
-      )}
+        )}
+
+      </div>
     </div>
   )
 }

@@ -91,6 +91,9 @@ def get_rekomendasi():
         
         target_name = target_row.iloc[0].get('Nama Wisata')
         target_img = target_row.iloc[0].get('image', f"https://picsum.photos/seed/{target_id}/800/600")
+        target_kategori = target_row.iloc[0].get('Atribut', 'Umum')
+        # Thesis Note: data actual tidak punya kolom Fasilitas, gunakan Atribut
+        target_fasilitas = target_row.iloc[0].get('Atribut', '-')
 
         # Hitung rating rata-rata untuk semua tempat sekali saja
         avg_ratings_map = {}
@@ -124,37 +127,43 @@ def get_rekomendasi():
         results = sorted(recommendations, key=lambda x: int(x['score'].replace('%','')), reverse=True)
         results = results[:k]  # type: ignore
 
-        # Hitung metrik presisi & recall secara real-time untuk tampilan
-        target_attr = set([t.strip().lower() for t in str(target_row.iloc[0].get('Atribut', '')).split(',') if t.strip()])
-        relevance_list = []
-        for res in results:
-            res_attr = set([t.strip().lower() for t in str(res.get('type', '')).split(',') if t.strip()])
-            if target_attr.intersection(res_attr):
-                relevance_list.append(1)
-            else:
-                relevance_list.append(0)
-            
-        precision = float(sum(relevance_list)) / len(results) if results else 0.0
-
-        # Hitung Recall Real-time untuk item ini
-        rel_others_found = []
-        for _, r in df_wisata.iterrows():
-            if int(r['tempat_id']) == target_id: continue
-            r_attr = set([t.strip().lower() for t in str(r.get('Atribut', '')).split(',') if t.strip()])
-            if target_attr.intersection(r_attr):
-                rel_others_found.append(1)
+        # --- EVALUASI REAL-TIME BERDASARKAN RATING (Skripsi Hal 38) ---
+        users_who_rated = df_ratings[df_ratings['Tempat_id'] == target_id]['Nama_akun'].unique() if df_ratings is not None else []
         
-        total_rel_in_db = float(len(rel_others_found))
-        recall = float(sum(relevance_list)) / total_rel_in_db if total_rel_in_db > 0 else 1.0
-        f1 = float((2 * precision * recall) / (precision + recall)) if (precision + recall) > 0 else 0.0
+        # Ground Truth: Item lain yang disukai (rating >= 4) oleh user yang sama
+        ground_truth = set()
+        if len(users_who_rated) > 0:
+            ground_truth = set(
+                df_ratings[
+                    (df_ratings['Nama_akun'].isin(users_who_rated)) & 
+                    (df_ratings['Tempat_id'] != target_id) & 
+                    (df_ratings['Rating'] >= 4)
+                ]['Tempat_id'].unique()
+            )
+
+        hits = [1 for res in results if res['id'] in ground_truth]
+        num_hits = sum(hits)
+        
+        # Precision@K
+        precision = num_hits / len(results) if results else 0.0
+        # Recall@K 
+        recall = num_hits / len(ground_truth) if ground_truth else 0.0
+        # F1-Score
+        f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
 
         return jsonify({
-            "acuan": {"id": target_id, "name": target_name, "image": target_img}, 
+            "acuan": {
+                "id": target_id, 
+                "name": target_name, 
+                "image": target_img,
+                "kategori": target_kategori,
+                "fasilitas": target_fasilitas
+            }, 
             "results": results,
             "metrics": {
-                "precision": f"{precision*100:.1f}%",
-                "recall": f"{recall*100:.1f}%",
-                "f1": f"{f1*100:.1f}%",
+                "precision": f"{precision:.2f}",
+                "recall": f"{recall:.2f}",
+                "f1": f"{f1:.2f}",
                 "k": k
             }
         })
@@ -176,7 +185,7 @@ def get_metrics():
         "recall": m['recall'],
         "f1_score": m['f1'],
         "total_data": len(df_wisata),
-        "method": "Leave-One-Out Cross-Validation"
+        "method": "Top-3 Recommendation"
     })
 
 @app.route('/api/summary', methods=['GET'])
@@ -211,7 +220,7 @@ def get_summary():
 
 @app.route('/api/statistik', methods=['GET'])
 def get_statistik():
-    """Mengambil data visualisasi untuk halaman Statistik."""
+    """Mengambil data visualisasi untuk halaman Statistik sesuai skripsi (Fig 3.7)."""
     try:
         df_wisata = data_manager.load_wisata()
         df_ratings = data_manager.load_ratings()
@@ -219,47 +228,46 @@ def get_statistik():
         if df_wisata is None or df_ratings is None:
             return jsonify({"error": "Data tidak lengkap"}), 404
 
-        # 1. Distribusi Rating (Pie Chart)
-        rating_counts = df_ratings['Rating'].value_counts().sort_index()
-        pieData = {
-            "labels": [f"Rating {r}" for r in rating_counts.index],
-            "datasets": [{
-                "data": [int(v) for v in rating_counts.values],
-                "backgroundColor": ['#fbbf24', '#f59e0b', '#d97706', '#b45309', '#10b981'],
-                "borderWidth": 0
-            }]
+        # 1. Grafik Rating (Data untuk Bar Chart)
+        # Menghitung sebaran rating 1-5
+        rating_dist = df_ratings['Rating'].value_counts().sort_index()
+        chart_rating = {
+            "labels": [f"{int(r)} Bintang" for r in rating_dist.index],
+            "values": [int(v) for v in rating_dist.values]
         }
 
-        # 2. Populer Kategori (Bar Chart)
-        cat_counts = df_wisata['Atribut'].str.split(',').explode().str.strip().replace('', np.nan).dropna().value_counts().head(5)
-        barData = {
-            "labels": [str(x) for x in cat_counts.index.tolist()],
-            "datasets": [{
-                "label": 'Jumlah Destinasi',
-                "data": [int(v) for v in cat_counts.values],
-                "backgroundColor": '#10b981',
-                "borderRadius": 8
-            }]
+        # 2. Distribusi Kategori (Atribut)
+        cat_counts = df_wisata['Atribut'].str.split(',').explode().str.strip().value_counts()
+        chart_kategori = {
+            "labels": cat_counts.index.tolist()[:6], # Ambil top 6 kategori
+            "values": cat_counts.values.tolist()[:6]
         }
-
-        # 3. Top Performers (Berdasarkan Rating Tertinggi)
+        
+        # 3. Wisata Terpopuler (Top performers)
+        # Berdasarkan rata-rata rating tertinggi
         top_ratings = df_ratings.groupby('Tempat_id')['Rating'].mean().sort_values(ascending=False).head(5)
-        topPerformers = []
+        top_performers = []
         for tid, score in top_ratings.items():
-            name = df_wisata[df_wisata['tempat_id'] == tid]['Nama Wisata'].iloc[0] if tid in df_wisata['tempat_id'].values else "Umum"
-            topPerformers.append({
+            name = df_wisata[df_wisata['tempat_id'] == tid]['Nama Wisata'].iloc[0] if tid in df_wisata['tempat_id'].values else f"ID {tid}"
+            top_performers.append({
                 "name": name,
-                "count": f"{score:.1f} ★"
+                "score": f"{score:.1f} ★"
             })
 
+        m = metrics_engine.calculate_system_metrics(df_wisata, df_ratings)
+
         return jsonify({
-            "pieData": pieData,
-            "barData": barData,
-            "topPerformers": topPerformers,
-            "total_destinasi": len(df_wisata),
-            "avg_rating": float(round(float(df_ratings['Rating'].mean()), 2))  # type: ignore
+            "summary": {
+                "total_destinasi": len(df_wisata),
+                "avg_rating": float(round(float(df_ratings['Rating'].mean()), 1))
+            },
+            "chart_rating": chart_rating,
+            "chart_kategori": chart_kategori,
+            "top_performers": top_performers,
+            "evaluation": m
         })
     except Exception as e:
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])

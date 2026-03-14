@@ -22,10 +22,12 @@
 }
 
 @layer base {
-  body {
-    @apply font-outfit bg-[#f8fbff] text-slate-900 antialiased overflow-x-hidden;
+  html, body {
+    @apply font-outfit bg-[#f8fbff] text-slate-900 antialiased;
     min-height: 100vh;
-    position: relative;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth;
   }
 
   /* Efek Latar Belakang Mesh Bergerak */

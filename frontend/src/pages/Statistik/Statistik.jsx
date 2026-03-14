@@ -1,263 +1,266 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Bar, Line, Doughnut } from 'react-chartjs-2'
-import { BarChart3, TrendingUp, Star, Users, MapPin, Compass } from 'lucide-react'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  Title, 
+  Tooltip, 
+  Legend, 
   ArcElement,
   PointElement,
-  LineElement,
-  Filler,
+  LineElement
 } from 'chart.js'
+import { Bar } from 'react-chartjs-2'
+import { 
+  Loader2, 
+  PieChart, 
+  BarChart3, 
+  TrendingUp, 
+  Info, 
+  Map, 
+  Star, 
+  Layers 
+} from 'lucide-react'
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  ArcElement,
   PointElement,
   LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  Filler
+  Title, 
+  Tooltip, 
+  Legend
 )
-
-const trendData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-  datasets: [
-    {
-      fill: true,
-      label: 'Pengunjung',
-      data: [350, 420, 380, 500, 620, 580],
-      borderColor: '#10b981',
-      backgroundColor: (context) => {
-        const ctx = context.chart.ctx;
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-        return gradient;
-      },
-      tension: 0.4,
-      borderWidth: 3,
-      pointRadius: 4,
-      pointBackgroundColor: '#fff',
-      pointBorderColor: '#10b981',
-      pointBorderWidth: 2,
-    },
-  ],
-}
-
-const options = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        color: '#64748b',
-        usePointStyle: true,
-        pointStyle: 'circle',
-        font: { family: 'Outfit', size: 12, weight: '700' },
-        padding: 30
-      }
-    },
-    tooltip: {
-      backgroundColor: 'rgba(15, 23, 42, 0.95)',
-      backdropFilter: 'blur(8px)',
-      titleFont: { family: 'Outfit', size: 14, weight: 'bold' },
-      bodyFont: { family: 'Outfit', size: 12 },
-      padding: 16,
-      cornerRadius: 16,
-      displayColors: true,
-      usePointStyle: true,
-      boxWidth: 8,
-      boxHeight: 8,
-    }
-  },
-  scales: {
-    y: {
-      grid: { color: 'rgba(241, 245, 249, 0.5)', drawBorder: false },
-      ticks: { color: '#94a3b8', font: { family: 'Outfit', size: 11, weight: '700' }, padding: 10 }
-    },
-    x: {
-      grid: { display: false },
-      ticks: { color: '#64748b', font: { family: 'Outfit', size: 11, weight: '700' }, padding: 10 }
-    },
-  }
-}
 
 export default function Statistik() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchStatistik = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/statistik')
         const result = await response.json()
         setData(result)
       } catch (error) {
-        console.error("Error fetching stats:", error)
+        console.error("Error fetching statistics:", error)
       } finally {
         setLoading(false)
       }
     }
-    fetchStats()
+    fetchStatistik()
   }, [])
 
-  if (loading) {
+  if (loading || !data) {
     return (
-      <div className="h-96 flex flex-col items-center justify-center gap-4 text-slate-400">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="font-bold">Menganalisis data wisata...</p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center gap-6">
+        <div className="relative">
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-emerald-500"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <BarChart3 className="text-emerald-500 animate-pulse" size={24} />
+          </div>
+        </div>
+        <p className="font-black text-[10px] uppercase tracking-[0.4em] text-slate-400">Menyusun Laporan...</p>
       </div>
     )
   }
 
-  return (
-    <div className="space-y-8 pb-16">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-emerald-600 font-bold text-[10px] tracking-widest uppercase">
-            <BarChart3 size={12} />
-            <span>Insight & Analitik</span>
-          </div>
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Data Visual Wisata</h1>
-          <p className="text-slate-500 text-sm font-medium">Laporan statistik performa destinasi secara real-time.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100">
-          <button className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Monthly</button>
-          <button className="px-4 py-1.5 text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:text-slate-600">Yearly</button>
-        </div>
-      </header>
+  const ratingBarData = {
+    labels: data.chart_rating.labels,
+    datasets: [{
+      label: 'Jumlah Destinasi',
+      data: data.chart_rating.values,
+      backgroundColor: '#10b981',
+      borderRadius: 12,
+      hoverBackgroundColor: '#059669',
+    }]
+  }
 
-      {/* KPI Section */}
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f172a',
+        titleFont: { size: 12, weight: 'bold' },
+        bodyFont: { size: 12 },
+        padding: 12,
+        cornerRadius: 12,
+        displayColors: false
+      }
+    },
+    scales: {
+      y: { 
+        beginAtZero: true,
+        grid: { color: '#f1f5f9', drawBorder: false },
+        ticks: { font: { size: 10, weight: '600' }, color: '#94a3b8' }
+      },
+      x: { 
+        grid: { display: false },
+        ticks: { font: { size: 10, weight: '600' }, color: '#94a3b8' }
+      }
+    }
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-6 py-16 space-y-12">
+      
+      {/* HEADER SECTION */}
+      <div className="space-y-2">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3 text-emerald-600 mb-1"
+        >
+          <div className="w-10 h-1 bg-emerald-500 rounded-full" />
+          <span className="text-[10px] font-black uppercase tracking-[0.4em]">Data Intelligence</span>
+        </motion.div>
+        <motion.h1 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-5xl font-black text-slate-900 tracking-tighter uppercase"
+        >
+          Statistik <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-sky-600">Wisata</span>
+        </motion.h1>
+      </div>
+
+      {/* SUMMARY CARDS ROW */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { title: 'Total Wisatawan', value: `${(data?.pieData?.datasets[0]?.data.reduce((a, b) => a + b, 0)) || 0} Akun`, trend: 'Data Real', icon: Users, color: 'text-emerald-500' },
-          { title: 'Destinasi Aktif', value: `${data?.total_destinasi || 0} Unit`, trend: '+0 Unit', icon: MapPin, color: 'text-sky-500' },
-          { title: 'Rating Global', value: data?.avg_rating || '0.0', trend: 'Excellent', icon: Star, color: 'text-amber-500' },
-        ].map((kpi, i) => (
+          { label: 'Total Destinasi', value: data.summary.total_destinasi, icon: Map, color: 'emerald' },
+          { label: 'Rating Rata-rata', value: `${data.summary.avg_rating} / 5.0`, icon: Star, color: 'amber' },
+          { label: 'Kategori Unik', value: data.chart_kategori?.labels?.length || 0, icon: Layers, color: 'sky' }
+        ].map((item, i) => (
           <motion.div
-            key={kpi.title}
-            initial={{ opacity: 0, y: 10 }}
+            key={item.label}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass-card p-6 flex items-center gap-5 border-white/60"
+            className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20 relative overflow-hidden group"
           >
-            <div className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center shadow-inner`}>
-              <kpi.icon size={28} className={kpi.color} />
+            <div className={`absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500`}>
+              <item.icon size={80} />
             </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{kpi.title}</p>
-              <div className="flex items-end gap-2">
-                <h4 className="text-2xl font-black text-slate-800 leading-none">{kpi.value}</h4>
-                <span className="text-[10px] font-black text-emerald-600 mb-0.5">{kpi.trend}</span>
-              </div>
-            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{item.label}</p>
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight">{item.value}</h3>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* MAIN DATA GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* LEFT: RATING DISTRIBUTION (7 COLUMNS) */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="lg:col-span-2 glass-card p-8 border-white/60 h-full"
+          className="lg:col-span-8 bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/30 flex flex-col"
         >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-                <TrendingUp size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight">Tren Kunjungan</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Januari - Juni 2026</p>
-              </div>
+          <div className="flex items-center justify-between mb-10">
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Analisis Distribusi Rating</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">Sebaran skor kepuasan pengunjung</p>
+            </div>
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+              <BarChart3 size={24} />
             </div>
           </div>
-          <div className="h-72">
-            <Line data={trendData} options={{ ...options, scales: { ...options.scales, x: { ...options.scales.x, grid: { display: true, color: 'rgba(0,0,0,0.02)' } } } }} />
+
+          <div className="flex-1 min-h-[350px]">
+            <Bar data={ratingBarData} options={chartOptions} />
           </div>
         </motion.div>
 
+        {/* RIGHT: TOP PERFORMERS (4 COLUMNS) */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card p-8 border-white/60"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="lg:col-span-4 bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl flex flex-col relative overflow-hidden"
         >
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-amber-50 rounded-xl text-amber-500">
-              <Star size={20} />
-            </div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight">Kepuasan</h3>
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <TrendingUp size={120} />
           </div>
-          <div className="h-64 relative flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Rating Avg</p>
-                <p className="text-3xl font-black text-slate-800 tracking-tighter leading-none">4.8</p>
-              </div>
+          
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="mb-10">
+              <h3 className="text-xl font-black tracking-tight uppercase">Top Performers</h3>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Destinasi dengan respon terbaik</p>
             </div>
-            <Doughnut data={data?.pieData || { labels: [], datasets: [] }} options={{ ...options, plugins: { ...options.plugins, legend: { display: true, position: 'bottom', labels: { padding: 20, boxWidth: 6, usePointStyle: true } } } }} />
-          </div>
-        </motion.div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="glass-card p-8 border-white/60">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-              <Compass size={20} />
-            </div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight">Populer Kategori</h3>
-          </div>
-          <div className="h-64">
-            <Bar data={data?.barData || { labels: [], datasets: [] }} options={options} />
-          </div>
-        </div>
-
-        <div className="glass-card p-8 border-white/60">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-100 rounded-xl text-slate-600">
-                <Users size={20} />
-              </div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight">Kunjungan Teratas</h3>
-            </div>
-            <button className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline">Full Report</button>
-          </div>
-          <div className="space-y-4">
-            {(data?.topPerformers || []).map((item, i) => {
-              // Convert "2.4k kunjungan" to a percentage for progress bar
-              const val = Math.min(100, (parseInt(item.count.replace(/\D/g, '')) / 2500) * 100);
-              return (
-                <div key={item.name} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-black text-slate-700">{item.name}</span>
-                    <span className="text-xs font-bold text-slate-400">{item.count}</span>
+            <div className="space-y-6 flex-1">
+              {(data.top_performers || []).map((item, i) => (
+                <motion.div 
+                  key={item.name} 
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + (i * 0.1) }}
+                  className="flex items-center justify-between p-4 rounded-3xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-black opacity-30">0{i+1}</span>
+                    <p className="font-bold text-xs uppercase tracking-tight text-slate-200 truncate max-w-[150px]">{item.name}</p>
                   </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
+                  <span className="text-emerald-400 font-black text-sm">{item.score}</span>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-10 p-6 bg-white/5 rounded-[2rem] border border-white/5">
+               <p className="text-[9px] text-slate-400 font-medium leading-relaxed italic">
+                 *Berdasarkan akumulasi rating rata-rata dari seluruh ulasan pengguna terverifikasi.
+               </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* BOTTOM: CATEGORY BREAKDOWN (FULL WIDTH) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-12 bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/20"
+        >
+          <div className="flex items-center gap-4 mb-12">
+            <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center">
+              <Layers size={24} />
+            </div>
+            <div className="space-y-0.5">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Kategorisasi Sektor Wisata</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Persentase distribusi per kelompok atribut</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            {(data.chart_kategori?.labels || []).map((label, i) => {
+              const val = data.chart_kategori.values[i];
+              const percentage = Math.round((val / data.summary.total_destinasi) * 100);
+              return (
+                <div key={label} className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <span className="text-[11px] font-black text-slate-800 uppercase tracking-tighter">{label}</span>
+                    <span className="text-[10px] font-black text-emerald-500">{val} Unit</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                    <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: `${val}%` }}
-                      transition={{ duration: 1, delay: i * 0.1 }}
-                      className="h-full bg-emerald-500 rounded-full"
+                      animate={{ width: `${percentage}%` }}
+                      className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500"
                     />
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
+
       </div>
     </div>
   )

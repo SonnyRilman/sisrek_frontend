@@ -23,19 +23,16 @@ def load_wisata():
         try:
             df = pd.read_excel(DATA_WISATA_PATH)
             
-            # Pastikan ID tempat adalah angka dan hapus yang kosong
+            # Bersihkan kolom tempat_id dari nilai NaN dan ubah ke integer
             df['tempat_id'] = pd.to_numeric(df['tempat_id'], errors='coerce')
             df = df.dropna(subset=['tempat_id'])
             df['tempat_id'] = df['tempat_id'].astype(int)
             
-            # Isi kolom yang kosong dengan teks kosong
+            # Isi semua sel kosong dengan string kosong
             df = df.fillna('')
             
-            # Bersihkan spasi di nama dan atribut
-            text_cols = ['Nama Wisata', 'Atribut']
-            for col in text_cols:
-                if col in df.columns:
-                    df[col] = df[col].astype(str).str.strip()
+            # Buat kolom baru combined_features yang isinya sama dengan kolom Atribut
+            df['combined_features'] = df['Atribut'].astype(str)
             
             _cache["wisata"] = df
             print(f"DEBUG: Berhasil memuat {len(df)} data wisata")
@@ -46,19 +43,30 @@ def load_wisata():
     return None
 
 def load_ratings():
-    """Mengambil data rating dari Excel Sheet2."""
+    """Mengambil data rating dari Excel Sheet2 dengan pembersihan khusus."""
     if _cache["ratings"] is not None:
         return _cache["ratings"]
         
     if os.path.exists(DATA_RATING_PATH):
         try:
-            # Baca data rating dari Sheet2 sesuai struktur file
+            # Baca data rating dari Sheet2
             df = pd.read_excel(DATA_RATING_PATH, sheet_name='Sheet2')
             
-            # Validasi ID Tempat dan Akun
-            df['Tempat_id'] = pd.to_numeric(df['Tempat_id'], errors='coerce')
-            df = df.dropna(subset=['Nama_akun', 'Tempat_id'])
-            df['Tempat_id'] = df['Tempat_id'].astype(int)
+            # Forward fill pada kolom Nama_akun
+            df['Nama_akun'] = df['Nama_akun'].ffill()
+            
+            # Hapus baris yang kolom Tempat_id atau Rating-nya masih kosong
+            df = df.dropna(subset=['Tempat_id', 'Rating'])
+            
+            # Ubah Tempat_id ke integer dan pastikan Rating bertipe numerik 1–5
+            df['Tempat_id'] = pd.to_numeric(df['Tempat_id'], errors='coerce').fillna(0).astype(int)
+            df['Rating'] = pd.to_numeric(df['Rating'], errors='coerce')
+            
+            # Filter baris yang Tempat_id-nya 0 (karena error coerce tadi)
+            df = df[df['Tempat_id'] > 0]
+            
+            # Pastikan rating berada di rentang 1-5
+            df = df[(df['Rating'] >= 1) & (df['Rating'] <= 5)]
             
             _cache["ratings"] = df
             print(f"DEBUG: Berhasil memuat {len(df)} data rating")

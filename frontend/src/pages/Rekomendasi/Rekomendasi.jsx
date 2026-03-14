@@ -1,340 +1,357 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, ArrowRight, Star, MapPin, Info, Target, Compass, Users, Loader2, ShieldCheck, Activity, RefreshCw, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Loader2, Info, MapPin, Compass, Award, Sparkles, Hash, Zap, Target } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export default function Rekomendasi() {
-  const [recommendations, setRecommendations] = useState([])
-  const [acuan, setAcuan] = useState(null)
-  const [metrics, setMetrics] = useState(null)
+  const [targetId, setTargetId] = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [health, setHealth] = useState(null)
-  const [k, setK] = useState(3)
-  const [allWisata, setAllWisata] = useState([])
-  const [showAcuanPicker, setShowAcuanPicker] = useState(false)
+  const [loadingStep, setLoadingStep] = useState(0)
+  const navigate = useNavigate()
 
-  const fetchRecommendations = useCallback(async (targetId, topK) => {
-    setLoading(true)
-    try {
-      const response = await fetch(`http://localhost:5000/api/rekomendasi?id=${targetId}&k=${topK}`)
-      const data = await response.json()
-      if (data.results) {
-        setRecommendations(data.results)
-        setAcuan(data.acuan)
-        setMetrics(data.metrics)
-      }
-    } catch (error) {
-      console.error("Error fetching recommendations:", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const initialLoad = useCallback(async () => {
-    // Fetch all wisata for the picker
-    try {
-      const res = await fetch('http://localhost:5000/api/wisata')
-      const data = await res.json()
-      setAllWisata(data)
-    } catch (e) {}
-
-    const selectedId = localStorage.getItem('selectedWisataId') || 1
-    fetchRecommendations(selectedId, k)
-
-    try {
-      const resH = await fetch(`http://localhost:5000/api/health`)
-      const dataH = await resH.json()
-      setHealth(dataH)
-    } catch (e) {}
-  }, [k, fetchRecommendations])
+  const loadingMessages = [
+    "Menginisialisasi Discovery Engine...",
+    "Memindai Atribut Wisata (Content-Based)...",
+    "Menganalisis Pola Minat User (Collaborative)...",
+    "Sinkronisasi Skor Hybrid Terpadu..."
+  ]
 
   useEffect(() => {
-    initialLoad()
-  }, []) // Mount only
+    const savedId = localStorage.getItem('selectedWisataId')
+    if (savedId) setTargetId(parseInt(savedId))
+  }, [])
 
-  const handleKChange = (newK) => {
-    setK(newK)
-    const selectedId = localStorage.getItem('selectedWisataId') || 1
-    fetchRecommendations(selectedId, newK)
+  useEffect(() => {
+    if (!targetId) return
+    const fetchRekomendasi = async () => {
+      setLoading(true)
+      setLoadingStep(0)
+      
+      // Timer untuk simulasi pesan loading
+      const msgInterval = setInterval(() => {
+        setLoadingStep(prev => (prev < 3 ? prev + 1 : prev))
+      }, 600)
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/rekomendasi?id=${targetId}&k=3`)
+        const result = await response.json()
+        
+        // Tambahkan artificial delay minimal 2.5 detik agar user merasa sistem "berpikir"
+        setTimeout(() => {
+          setData(result)
+          setLoading(false)
+          clearInterval(msgInterval)
+        }, 2500)
+
+      } catch (error) {
+        console.error("Error fetching recommendation:", error)
+        setLoading(false)
+        clearInterval(msgInterval)
+      }
+    }
+    fetchRekomendasi()
+  }, [targetId])
+
+  if (!targetId) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-8 bg-[#fcfdfe]">
+        <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 animate-pulse">
+          <Compass size={48} />
+        </div>
+        <div className="text-center space-y-2">
+          <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Belum Ada Acuan</h3>
+          <p className="text-slate-400 font-medium max-w-sm">Pilih destinasi di daftar wisata terlebih dahulu untuk memulai analisis rekomendasi kami.</p>
+        </div>
+        <button 
+          onClick={() => navigate('/daftar-wisata')}
+          className="px-10 py-5 bg-slate-900 text-white rounded-full font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all hover:bg-emerald-600"
+        >
+          Lihat Daftar Wisata
+        </button>
+      </div>
+    )
   }
 
-  const handleSelectAcuan = (id) => {
-    localStorage.setItem('selectedWisataId', id)
-    setShowAcuanPicker(false)
-    fetchRecommendations(id, k)
+  if (loading || !data) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-[#fcfdfe] relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <motion.div 
+            animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-emerald-100 rounded-full blur-[120px]"
+          />
+          <motion.div 
+            animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.15, 0.1] }}
+            transition={{ duration: 5, repeat: Infinity, delay: 1 }}
+            className="absolute -bottom-1/4 -left-1/4 w-1/2 h-1/2 bg-sky-100 rounded-full blur-[120px]"
+          />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center gap-12 text-center">
+          {/* Main Loader Core */}
+          <div className="relative">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              className="w-32 h-32 rounded-full border-[10px] border-slate-50 border-t-emerald-500 border-r-emerald-500/20"
+            />
+            {/* Icon removed as per user request */}
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] animate-pulse">Sistem Rekomendasi Terpadu</span>
+              <div className="h-0.5 w-12 bg-emerald-100 rounded-full overflow-hidden mt-2">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(loadingStep + 1) * 25}%` }}
+                  className="h-full bg-emerald-500"
+                />
+              </div>
+            </div>
+            
+            <AnimatePresence mode="wait">
+              <motion.p 
+                key={loadingStep}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-slate-800 font-bold text-lg tracking-tight h-8"
+              >
+                {loadingMessages[loadingStep]}
+              </motion.p>
+            </AnimatePresence>
+            
+            <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest pt-2">
+               Mohon Tunggu • Kapuas Hulu Intelligence
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-12 pb-20">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <motion.div
-            initial={{ scale: 0.8, rotate: -15 }}
-            animate={{ scale: 1, rotate: 0 }}
-            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 flex items-center justify-center text-white shadow-xl shadow-emerald-200"
-          >
-            <Zap size={32} className="fill-white" />
-          </motion.div>
-          <div>
-            <div className="inline-flex items-center gap-2 text-emerald-600 font-bold text-[10px] tracking-widest uppercase mb-0.5">
-              <span>Hybrid Recommender</span>
-            </div>
-            <h1 className="text-4xl font-black text-slate-800 tracking-tight">Rekomendasi Cerdas</h1>
-            <p className="text-slate-500 text-sm font-medium opacity-80 italic">Optimasi algoritma untuk perjalanan Anda.</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Reference & Controls */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, x: -15 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-3 glass-card p-10 flex flex-col md:flex-row items-center gap-10 relative overflow-hidden group border-white/80"
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-outfit">
+      
+      {/* 1. Navigation Header */}
+      <div className="max-w-7xl mx-auto px-6 pt-12 pb-8">
+        <button 
+          onClick={() => navigate('/daftar-wisata')}
+          className="group flex items-center gap-3 text-slate-400 hover:text-emerald-600 transition-all font-black text-[10px] uppercase tracking-widest"
         >
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 group-hover:scale-110 transition-transform duration-1000"></div>
-
-          <div className="relative">
-            <div className="w-36 h-36 rounded-3xl overflow-hidden border-[6px] border-white shadow-2xl rotate-2 group-hover:rotate-0 transition-transform duration-500 bg-slate-100">
-              <img 
-                src={acuan?.image || "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=800"} 
-                className="w-full h-full object-cover" 
-                alt="acuan" 
-              />
-            </div>
-            <div className="absolute -bottom-3 -right-3 bg-emerald-600 text-white p-2.5 rounded-2xl shadow-xl border-4 border-white">
-              <Target size={22} />
-            </div>
+          <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 group-hover:border-emerald-200">
+            <ArrowLeft size={16} />
           </div>
-
-          <div className="flex-1 text-center md:text-left z-10 space-y-4">
-            <div className="relative inline-block text-left">
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 px-1">Wisata Acuan Utama</p>
-              <button 
-                onClick={() => setShowAcuanPicker(!showAcuanPicker)}
-                className="flex items-center gap-3 text-4xl font-black text-slate-800 tracking-tight hover:text-emerald-700 transition-colors"
-                title="Klik untuk ganti acuan"
-              >
-                {acuan?.name || 'Memuat...'}
-                <ChevronDown size={28} className="mt-2 text-slate-300" />
-              </button>
-              
-              <AnimatePresence>
-                {showAcuanPicker && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute z-50 mt-4 w-80 max-h-96 overflow-y-auto bg-white rounded-[32px] shadow-2xl border border-slate-100 p-4 custom-scrollbar"
-                  >
-                    <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-2">Pilih Destinasi Acuan</p>
-                    {allWisata.map((w) => (
-                      <button
-                        key={w.id}
-                        onClick={() => handleSelectAcuan(w.id)}
-                        className={`w-full text-left px-5 py-3 rounded-2xl text-sm font-bold transition-all flex items-center gap-3 ${acuan?.id === w.id ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-50 text-slate-600'}`}
-                      >
-                         <div className={`w-2 h-2 rounded-full ${acuan?.id === w.id ? 'bg-emerald-500' : 'bg-slate-200'}`}></div>
-                         {w.name}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-              <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase bg-white/50 px-3 py-1.5 rounded-xl border border-white/60">
-                <MapPin size={14} className="text-emerald-500" />
-                <span>Kuala Kapuas</span>
-              </div>
-              <div className="flex items-center gap-2 text-emerald-600 font-bold text-[10px] uppercase bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100">
-                <Zap size={14} />
-                <span>Hybrid Active</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 p-1.5 bg-slate-100 rounded-[28px] border border-slate-200 shadow-inner">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center py-1">Set Top Results</p>
-            <div className="flex gap-1.5">
-              {[3, 5].map((val) => (
-                <button
-                  key={val}
-                  onClick={() => handleKChange(val)}
-                  className={`px-5 py-3 rounded-[20px] text-sm font-black transition-all transform active:scale-90 ${k === val ? 'bg-slate-900 text-white shadow-xl scale-105' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}
-                >
-                  {val}
-                </button>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`glass-card p-8 border-white/80 flex flex-col justify-center gap-4 ${health?.healthy === false ? 'bg-rose-50/50' : ''}`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Integrity</p>
-            <div className={`w-3 h-3 rounded-full ${health?.healthy === false ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-          </div>
-          
-          <div className="space-y-3">
-             <div className="flex justify-between items-end">
-                <div>
-                   <h4 className="text-2xl font-black text-slate-800">{health ? (health.healthy ? 'HEALTHY' : 'ISSUE') : '---'}</h4>
-                   <p className="text-[9px] text-slate-500 font-bold uppercase">Files Status</p>
-                </div>
-                <div className="text-right">
-                   <p className="text-lg font-black text-slate-800">{health?.total_wisata || 0}</p>
-                   <p className="text-[9px] text-slate-500 font-bold uppercase">Database</p>
-                </div>
-             </div>
-             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }} 
-                  animate={{ width: '100%' }} 
-                  className={`h-full ${health?.healthy === false ? 'bg-rose-400' : 'bg-emerald-400'}`}
-                ></motion.div>
-             </div>
-          </div>
-        </motion.div>
+          Kembali ke Galeri
+        </button>
       </div>
 
-      {/* Real-time Metrics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-4 glass-card p-6 border-white/80 flex flex-wrap items-center justify-between gap-8 bg-slate-900 text-white"
-        >
-          <div className="flex items-center gap-4">
-             <div className="p-3 bg-white/10 rounded-xl">
-               <ShieldCheck className="text-emerald-400" size={24} />
-             </div>
-             <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Auto-Evaluation Results</p>
-                <h4 className="text-lg font-bold">Real-time Performance Metrics</h4>
-             </div>
-          </div>
-
-          <div className="flex gap-10">
-            {[
-              { label: 'Precision', val: metrics?.precision, icon: Target, color: 'text-emerald-400' },
-              { label: 'Recall', val: metrics?.recall, icon: Activity, color: 'text-sky-400' },
-              { label: 'F1-Score', val: metrics?.f1, icon: Zap, color: 'text-amber-400' },
-            ].map(m => (
-              <div key={m.label} className="flex items-center gap-3">
-                <m.icon size={18} className={m.color} />
-                <div>
-                  <p className="text-[8px] font-black text-slate-500 uppercase">{m.label}</p>
-                  <p className="text-xl font-black text-white leading-none">{loading ? '...' : m.val}</p>
-                </div>
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        
+        {/* LEFT COLUMN: Main Reference Card (7 Columns) */}
+        <div className="lg:col-span-12 xl:col-span-8 space-y-12">
+          
+          {/* Cinematic Hero */}
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative h-[500px] md:h-[600px] rounded-[4rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border-8 border-white group"
+          >
+            <img
+              src={data.acuan.image || `https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=1200`}
+              className="absolute inset-0 w-full h-full object-cover grayscale-[0.2] transition-transform duration-[3000ms] group-hover:scale-105"
+              alt={data.acuan.name}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+            
+            <div className="absolute inset-x-0 bottom-0 p-12 md:p-16 space-y-6">
+              <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-emerald-500/90 backdrop-blur-xl rounded-2xl border border-white/20">
+                <Hash size={14} className="text-white" />
+                <span className="text-white text-[10px] font-black uppercase tracking-widest">Wisata Acuan Utama</span>
               </div>
+              <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase leading-[0.8] drop-shadow-2xl">
+                {data.acuan.name}
+              </h2>
+              <div className="flex items-center gap-4 text-emerald-400">
+                <MapPin size={16} />
+                <span className="font-bold tracking-tight text-lg text-white/80">Kapuas Hulu, Kalimantan Barat</span>
+              </div>
+            </div>
+          </motion.section>
+
+          {/* Detailed Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {[
+              { label: 'Kategori Utama', value: data.acuan.kategori || 'Alam & Petualangan', icon: Compass, color: 'text-sky-500' },
+              { label: 'Fasilitas Terverifikasi', value: data.acuan.fasilitas || 'Standar Destinasi', icon: Award, color: 'text-emerald-500' }
+            ].map((item, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + (i * 0.1) }}
+                className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/10 flex items-start gap-6"
+              >
+                <div className={`p-4 rounded-2.5xl bg-emerald-50 ${item.color}`}>
+                  <item.icon size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
+                  <p className="text-lg font-black text-slate-800 tracking-tight leading-tight">{item.value}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
-
-          <div className="hidden md:block h-10 w-px bg-white/10"></div>
-
-          <div className="flex items-center gap-3 text-right">
-             <p className="text-[9px] font-bold text-slate-400 uppercase">Method:<br/>Leave-One-Out (Top-{k})</p>
-             <button onClick={() => fetchRecommendations(acuan?.id || 1, k)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-             </button>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Results Rendering */}
-      <div>
-        <div className="flex items-center justify-between mb-8 px-2">
-          <h3 className="text-3xl font-black text-slate-800 tracking-tight">Pilihan Teratas untuk Anda (Top {k})</h3>
-          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100">
-             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-             <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Algoritma Optimal</span>
-          </div>
         </div>
 
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-4 text-slate-400">
-            <Loader2 className="animate-spin" size={48} />
-            <p className="font-bold">Menghitung rekomendasi...</p>
+        {/* RIGHT COLUMN: Results & Hybrid Analysis (5 Columns) */}
+        <div className="lg:col-span-12 xl:col-span-4 space-y-8">
+          
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-black text-slate-900 tracking-tighter uppercase flex items-center gap-3">
+               Destinasi Terkait
+            </h3>
+            <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest">K=3 Top Match</span>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <AnimatePresence mode="popLayout">
-              {recommendations.map((item, i) => (
+
+          <div className="space-y-6">
+            <AnimatePresence>
+              {(data.results || []).map((rec, i) => (
                 <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="glass-card glass-card-hover group overflow-hidden border-white/60 p-0"
+                  key={rec.id}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + (i * 0.1), ease: "easeOut" }}
+                  className="relative group bg-white p-6 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20 hover:border-emerald-300 transition-all duration-500 overflow-hidden"
                 >
-                  <div className="relative h-56 overflow-hidden">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-
-                    <div className="absolute top-4 left-4 bg-emerald-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-emerald-400/50 flex items-center gap-1.5 shadow-lg">
-                      <Zap size={12} className="text-white fill-white" />
-                      <span className="text-[11px] font-black text-white uppercase tracking-tighter">Hybrid {item.score}</span>
+                  <div className="flex items-center gap-6 relative z-10">
+                    {/* Small Visual */}
+                    <div className="shrink-0 w-24 h-24 rounded-[2rem] overflow-hidden shadow-lg border-4 border-slate-50">
+                      <img 
+                        src={rec.image || `https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=300`} 
+                        className="w-full h-full object-cover grayscale-[0.4] group-hover:grayscale-0 transition-all duration-700" 
+                        alt={rec.name} 
+                      />
                     </div>
+                    
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center justify-between">
+                         <span className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Rekomendasi #{i+1}</span>
+                         <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
+                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest border-r border-emerald-200 pr-2">Hybrid Score</span>
+                            <span className="text-[10px] font-black text-emerald-700">{rec.score}</span>
+                         </div>
+                      </div>
+                      <h4 className="text-xl font-black text-slate-900 tracking-tighter leading-[0.85] uppercase group-hover:text-emerald-600 transition-colors">
+                         {rec.name}
+                      </h4>
+                      {/* Hybrid Breakdown Visualization */}
+                      <div className="pt-4 space-y-3">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-slate-400">
+                             <span>Kesamaan Atribut</span>
+                             <span className="text-emerald-500">{rec.breakdown?.content || '0%'}</span>
+                          </div>
+                          <div className="h-1 w-full bg-slate-50 rounded-full overflow-hidden">
+                             <motion.div 
+                               initial={{ width: 0 }}
+                               animate={{ width: rec.breakdown?.content || '0%' }}
+                               className="h-full bg-emerald-400"
+                             />
+                          </div>
+                        </div>
 
-                    <div className="absolute bottom-4 left-6 pr-4">
-                      <p className="text-white text-lg font-bold drop-shadow-md leading-tight">{item.name}</p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-slate-400">
+                             <span>Pola Minat User</span>
+                             <span className="text-sky-500">{rec.breakdown?.collaborative || '0%'}</span>
+                          </div>
+                          <div className="h-1 w-full bg-slate-50 rounded-full overflow-hidden">
+                             <motion.div 
+                               initial={{ width: 0 }}
+                               animate={{ width: rec.breakdown?.collaborative || '0%' }}
+                               className="h-full bg-sky-400"
+                             />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        {/* Button removed as per user request */}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-6 space-y-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Content</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-700">{item.breakdown?.content || '0%'}</span>
-                          <div className="w-12 h-1 bg-emerald-200 rounded-full overflow-hidden">
-                             <div className="h-full bg-emerald-500" style={{ width: item.breakdown?.content }}></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Collaborative</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-700">{item.breakdown?.collaborative || '0%'}</span>
-                          <div className="w-12 h-1 bg-sky-200 rounded-full overflow-hidden">
-                             <div className="h-full bg-sky-500" style={{ width: item.breakdown?.collaborative }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-start gap-3 min-h-[60px]">
-                      <Info size={14} className="text-emerald-600 mt-0.5 shrink-0" />
-                      <p className="text-[10px] text-emerald-800 font-medium leading-relaxed italic">
-                        {item.reason}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 text-right">
-                       <div className="flex flex-wrap gap-1">
-                          {item.type.split(',').slice(0, 2).map((t, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-slate-100 text-[8px] font-black uppercase text-slate-500 rounded-md">
-                              {t.trim()}
-                            </span>
-                          ))}
-                       </div>
-                      <button className="bg-emerald-600 w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 hover:scale-110 active:scale-95 transition-all">
-                        <ArrowRight size={18} />
-                      </button>
-                    </div>
+                  {/* AI Insight Snippet */}
+                  <div className="mt-6 pt-6 border-t border-slate-50">
+                     <p className="text-[11px] text-slate-500 font-medium leading-relaxed italic pl-2 border-l-2 border-emerald-500/20">
+                        "{rec.reason || 'Memiliki karakteristik geografis dan aktivitas yang sangat serupa dengan pilihan utama Anda.'}"
+                     </p>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
-        )}
+
+          {/* Evaluation System Card (Fase Evaluasi Skripsi) */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1 }}
+            className="p-10 bg-white rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/20 space-y-8"
+          >
+             <div className="space-y-2">
+                <div className="flex items-center gap-3 text-emerald-600">
+                   <Target size={20} className="animate-pulse" />
+                   <h4 className="font-black text-sm tracking-widest uppercase">Evaluasi Akurasi</h4>
+                </div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                   Metrik Performa <span className="text-slate-900">Top-{data.metrics?.k || 3}</span> Recommendation
+                </p>
+             </div>
+
+             <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: 'P', value: data.metrics?.precision || '0.00', sub: 'Precision' },
+                  { label: 'R', value: data.metrics?.recall || '0.00', sub: 'Recall' },
+                  { label: 'F1', value: data.metrics?.f1 || '0.00', sub: 'F1-Score' }
+                ].map((m) => (
+                  <div key={m.label} className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-col items-center">
+                    <span className="text-[8px] font-black text-slate-300 uppercase mb-1">{m.sub}</span>
+                    <span className="text-lg font-black text-slate-900 tracking-tighter">{m.value}</span>
+                  </div>
+                ))}
+             </div>
+
+             <div className="pt-2 border-t border-slate-50 font-medium text-[9px] text-slate-400 italic leading-relaxed text-center">
+                *Metrik dievaluasi berdasarkan kesesuaian hasil terhadap ground truth per user.
+             </div>
+          </motion.div>
+        </div>
       </div>
     </div>
+  )
+}
+
+function ArrowRight({ size, className }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="3" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M5 12h14m-7-7 7 7-7 7"/>
+    </svg>
   )
 }

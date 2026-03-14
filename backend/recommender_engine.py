@@ -1,77 +1,124 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 import numpy as np
 
 def calculate_hybrid_scores(target_id, df_wisata, df_ratings):
     """
-    Logika utama algoritma Hybrid Recommender.
-    Menghitung kemiripan berdasarkan konten (kategori) dan minat user (rating).
+    Menghitung skor hybrid menggunakan CBF (TF-IDF) dan CF (Item-based).
     """
-    target_row = df_wisata[df_wisata['tempat_id'] == target_id]
-    if target_row.empty:
+    if df_wisata.empty:
         return []
 
-    # Ambil atribut/tag dari destinasi acuan
-    target_type = str(target_row.iloc[0].get('Atribut', ''))
-    target_tags = set([t.strip().lower() for t in target_type.split(',') if t.strip()])
+    # --- 1. CONTENT-BASED FILTERING (CBF) ---
+    # Ambil kolom combined_features dan jalankan TF-IDF
+    tfidf = TfidfVectorizer(stop_words=None) # Stop words disesuaikan jika perlu
+    tfidf_matrix = tfidf.fit_transform(df_wisata['combined_features'].fillna(''))
     
-    # 1. Content-Based Scoring (Menggunakan Jaccard Similarity)
-    content_scores = {}
-    others = df_wisata[df_wisata['tempat_id'] != target_id]
-    for _, row in others.iterrows():
-        row_id = int(row['tempat_id'])
-        row_tags = set([t.strip().lower() for t in str(row.get('Atribut', '')).split(',') if t.strip()])
-        
-        # Hitung irisan tag yang sama
-        intersection = target_tags.intersection(row_tags)
-        union = target_tags.union(row_tags)
-        # Skor ideal antara 0 sampai 1
-        content_scores[row_id] = len(intersection) / len(union) if union else 0
+    # Hitung cosine similarity antar semua destinasi
+    content_sim_matrix = cosine_similarity(tfidf_matrix)
+    
+    # Cari index baris untuk destinasi acuan
+    try:
+        target_idx = df_wisata[df_wisata['tempat_id'] == target_id].index[0]
+        # Kita butuh index posisi (0, 1, 2...) bukan label index
+        target_pos = df_wisata.index.get_loc(target_idx)
+    except (IndexError, KeyError):
+        return []
 
-    # 2. Collaborative Scoring (Berdasarkan pola rating user lain)
-    collab_scores = {int(row_id): 0.0 for row_id in content_scores.keys()}
-    if df_ratings is not None:
-        tid = int(target_id)
-        
-        # A. Cari user yang menyukai destinasi acuan ini
-        users_who_liked = df_ratings[df_ratings['Tempat_id'] == tid]['Nama_akun'].unique()
-        if len(users_who_liked) > 0:
-            # Cari tempat lain yang juga disukai oleh user-user tersebut
-            peers_ratings = df_ratings[(df_ratings['Nama_akun'].isin(users_who_liked)) & (df_ratings['Tempat_id'] != tid)]
-            counts = peers_ratings['Tempat_id'].value_counts(normalize=True)
-            for rid, score in counts.items():
-                rid_int = int(rid)
-                if rid_int in collab_scores: 
-                    collab_scores[rid_int] = float(score) * 0.8
-        
-        # B. Fallback: Tambahkan faktor popularitas umum (30%)
-        pop_counts = df_ratings['Tempat_id'].value_counts(normalize=True)
-        for rid, pop in pop_counts.items():
-            rid_int = int(rid)
-            if rid_int in collab_scores:
-                collab_scores[rid_int] += float(pop) * 0.3
+    # Skor CBF adalah baris simetri untuk target_id
+    cbf_scores_array = content_sim_matrix[target_pos]
 
-        # Normalisasi skor agar tidak terlalu kecil saat ditampilkan di grafik
-        active_vals = [v for v in collab_scores.values() if v > 0]
-        if active_vals:
-            max_c = max(active_vals)
-            for rid in collab_scores:
-                if collab_scores[rid] > 0:
-                    collab_scores[rid] = 0.15 + (collab_scores[rid] / max_c) * 0.8
+    # --- 2. COLLABORATIVE FILTERING (CF) ---
+    # Bangun matriks user-item (Nama_akun x Tempat_id)
+    user_item_matrix = df_ratings.pivot_table(index='Nama_akun', columns='Tempat_id', values='Rating').fillna(0)
+    
+    # Pastikan semua tempat_id dari df_wisata masuk ke kolom (meskipun tidak ada di rating)
+    all_place_ids = df_wisata['tempat_id'].unique()
+    for pid in all_place_ids:
+        if pid not in user_item_matrix.columns:
+            user_item_matrix[pid] = 0.0
+            
+    # Urutkan kolom agar sesuai urutan index jika perlu
+    user_item_matrix = user_item_matrix.reindex(columns=sorted(user_item_matrix.columns))
+    
+    # Hitung cosine similarity antar kolom (item)
+    # Transpose agar item jadi baris untuk dihitung similarity-nya
+    item_sim_matrix = cosine_similarity(user_item_matrix.T)
+    item_sim_df = pd.DataFrame(item_sim_matrix, index=user_item_matrix.columns, columns=user_item_matrix.columns)
+    
+    # Cari user-user yang pernah menilai wisata acuan
+    users_who_rated_target = df_ratings[df_ratings['Tempat_id'] == target_id]['Nama_akun'].unique()
+    
+    cf_scores_final = {}
+    
+    if len(users_who_rated_target) > 0:
+        # Prediksi rating untuk destinasi lain berdasarkan pola user-user tersebut
+        for pid in all_place_ids:
+            if pid == target_id:
+                cf_scores_final[pid] = 0
+                continue
+            
+            user_predictions = []
+            for user in users_who_rated_target:
+                actual_r = user_item_matrix.loc[user, pid]
+                if actual_r > 0:
+                    user_predictions.append(actual_r)
+                else:
+                    # Prediksi: Weighted Average Similarity * Rating
+                    sims = item_sim_df[pid]
+                    ratings = user_item_matrix.loc[user]
+                    
+                    # Hanya gunakan item yang sudah diberi rating oleh user ini
+                    rated_mask = ratings > 0
+                    if rated_mask.any():
+                        num = np.dot(sims[rated_mask], ratings[rated_mask])
+                        den = sims[rated_mask].sum()
+                        if den > 0:
+                            user_predictions.append(num / den)
+            
+            if user_predictions:
+                cf_scores_final[pid] = np.mean(user_predictions)
+            else:
+                cf_scores_final[pid] = 0
+    else:
+        # Cold start: tidak ada user yang menilai wisata acuan
+        cf_scores_final = {pid: 0 for pid in all_place_ids}
 
-    # 3. Penggabungan Hybrid (Bobot: 60% Konten, 40% Rating User)
+    # Normalisasi CF ke rentang 0-1
+    cf_list = [cf_scores_final.get(pid, 0) for pid in all_place_ids]
+    r_min, r_max = min(cf_list), max(cf_list)
+    
+    if r_max > r_min:
+        cf_norm = [(r - r_min) / (r_max - r_min) for r in cf_list]
+    else:
+        cf_norm = [0.0] * len(cf_list)
+        
+    cf_norm_dict = dict(zip(all_place_ids, cf_norm))
+
+    # --- 3. HYBRID & SELECTION ---
     final_results = []
-    for rid in content_scores.keys():
-        c_val = content_scores[rid]
-        cf_val = collab_scores[rid]
+    for pos, (i, row) in enumerate(df_wisata.iterrows()):
+        pid = int(row['tempat_id'])
+        if pid == target_id: continue
         
-        # Rumus bobot akhir
-        score = (c_val * 0.6) + (cf_val * 0.4)
+        cbf_val = cbf_scores_array[pos]
+        cf_norm_val = cf_norm_dict.get(pid, 0)
         
+        # Rumus Hybrid
+        if cf_norm_val > 0:
+            hybrid_score = 0.5 * cbf_val + 0.5 * cf_norm_val
+        else:
+            hybrid_score = 1.0 * cbf_val # Cold-start
+            
         final_results.append({
-            "rid": rid,
-            "final_score": score,
-            "content_p": c_val,
-            "collab_p": cf_val
+            "rid": pid,
+            "final_score": float(hybrid_score),
+            "content_p": float(cbf_val),
+            "collab_p": float(cf_norm_val)
         })
         
+    # Urutkan berdasarkan skor tertinggi
+    final_results = sorted(final_results, key=lambda x: x['final_score'], reverse=True)
+    
     return final_results
