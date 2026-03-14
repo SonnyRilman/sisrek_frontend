@@ -1,35 +1,59 @@
 # SRWK - Sistem Rekomendasi Wisata Kapuas
 
-Sistem Rekomendasi Wisata Kapuas (SRWK) adalah platform inovatif yang dirancang untuk memajukan potensi pariwisata di Kabupaten Kapuas, Kalimantan Tengah. Aplikasi ini menggunakan teknologi Hybrid Recommendation untuk memberikan saran destinasi yang akurat dan personal bagi setiap pengguna.
+Sistem Rekomendasi Wisata Kapuas (SRWK) adalah platform inovatif yang dirancang untuk memajukan potensi pariwisata di Kabupaten Kapuas, Kalimantan Tengah. Aplikasi ini menggunakan teknologi **Hybrid Recommendation** (Content-Based & Collaborative Filtering) untuk memberikan saran destinasi yang akurat dan personal.
 
-## Fitur Utama
+## Struktur Folder
 
-- Rekomendasi Cerdas: Menggunakan algoritma Hybrid (Collaborative & Content-Based Filtering) untuk saran destinasi yang dipersonalisasi.
-- Katalog Destinasi: Daftar lengkap objek wisata di Kabupaten Kapuas dengan fitur pencarian dan filter kategori (Alam, Budaya, Religi, Kuliner, Taman).
-- Visualisasi Data: Grafik interaktif yang menyajikan statistik kunjungan dan popularitas destinasi.
-- Peta Sebaran: Visualisasi lokasi destinasi rekomendasi melalui peta interaktif.
-- Widget Cuaca: Informasi cuaca real-time untuk wilayah Kabupaten Kapuas.
+Project ini dibagi menjadi dua bagian utama agar pengelolaan kode lebih rapi:
 
-## Teknologi
+### **1. Backend (Python/Flask)**
+Terletak di folder `/backend`, mengelola logika data dan algoritma:
+- `app.py`: Titik masuk utama server API.
+- `data_manager.py`: Mengelola pembacaan data dari Excel.
+- `recommender_engine.py`: Inti algoritma rekomendasi.
+- `metrics_engine.py`: Sistem pengujian performa.
+- `data/`: Database Excel.
 
-Aplikasi ini dibangun menggunakan stack teknologi modern:
+### **2. Frontend (React/Vite)**
+Terletak di folder `/frontend`, mengelola antarmuka pengguna:
+- `src/`: Berisi kode sumber aplikasi (Halaman, Komponen, Gaya).
+- `public/`: Aset publik seperti gambar dan ikon.
+- `vite.config.js`: Konfigurasi build sistem.
 
-- React.js: Library JavaScript untuk membangun antarmuka pengguna.
-- Vite: Build tool generasi berikutnya untuk performa pengembangan yang cepat.
-- Tailwind CSS v4: Framework CSS untuk desain yang modern dan responsif.
-- Framer Motion: Library untuk animasi yang halus dan interaktif.
-- Lucide React: Kumpulan ikon yang modern dan konsisten.
-- Chart.js: Library untuk visualisasi data melalui grafik.
+---
 
-## Desain Antarmuka
+## Cara Menjalankan Sistem
 
-Aplikasi menggunakan tema warna Emerald Green yang segar dan asri, mencerminkan identitas alam Kalimantan. Antarmuka dilengkapi dengan efek mesh gradient pada latar belakang dan elemen glassmorphism untuk kesan yang premium.
+### **1. Menjalankan Backend (Server API)**
 
-## Penginstalan
+Buka terminal di folder `backend`, lalu jalankan:
+```bash
+python app.py
+```
+*Server backend akan berjalan di: http://127.0.0.1:5000*
 
-1. Clone repository ini.
-2. Jalankan `npm install` untuk menginstal dependensi.
-3. Jalankan `npm run dev` untuk memulai server pengembangan.
-4. Buka `http://localhost:5173` di browser Anda.
+---
+
+### **2. Menjalankan Frontend (Antarmuka)**
+
+Buka terminal di folder `frontend`, lalu jalankan:
+```bash
+# Jalankan server pengembangan
+npm run dev
+```
+*Akses aplikasi di: http://localhost:5173*
+
+---
+
+## Teknologi yang Digunakan
+
+- **Backend**: Python, Flask, Pandas.
+- **Frontend**: React.js, Vite, Tailwind CSS v4.
+- **Library**: Framer Motion, Lucide React, Chart.js.
+
+## Catatan Pengembang
+- Data destinasi dan rating dikelola melalui file Excel di folder `backend/data/`.
+- Perubahan pada algoritma dilakukan di `recommender_engine.py`.
+- Struktur folder sudah modular untuk memudahkan pengembangan lebih lanjut.
 
 © 2026 Tim Pengembang SRWK. Dikembangkan untuk kemajuan pariwisata Kabupaten Kapuas.

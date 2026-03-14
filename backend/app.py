@@ -1,213 +1,278 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import pandas as pd
+from flask import Flask, jsonify, request  # type: ignore
+from flask_cors import CORS  # type: ignore
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
 import os
 import traceback
 
+# Import modul internal yang sudah kita buat
+import data_manager  # type: ignore
+import recommender_engine  # type: ignore
+import metrics_engine  # type: ignore
+
 app = Flask(__name__)
+# Izinkan frontend mengakses API ini
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_WISATA_PATH = os.path.join(BASE_DIR, 'data wisata.xlsx')
-DATA_RATING_PATH = os.path.join(BASE_DIR, 'data rating.xlsx')
-
-cache = {
-    "wisata": None,
-    "ratings": None
-}
-
-def load_data():
-    if cache["wisata"] is not None:
-        return cache["wisata"]
-    
-    if os.path.exists(DATA_WISATA_PATH):
-        try:
-            df = pd.read_excel(DATA_WISATA_PATH)
-            # Ensure tempat_id is numeric and handle NaNs
-            df['tempat_id'] = pd.to_numeric(df['tempat_id'], errors='coerce')
-            df = df.dropna(subset=['tempat_id'])
-            df['tempat_id'] = df['tempat_id'].astype(int)
-            df = df.fillna('')
-            cache["wisata"] = df
-            print(f"Loaded {len(df)} wisata items")
-            return df
-        except Exception as e:
-            print(f"Error loading excel: {e}")
-            return None
-    return None
-
-def load_ratings():
-    if cache["ratings"] is not None:
-        return cache["ratings"]
-        
-    if os.path.exists(DATA_RATING_PATH):
-        try:
-            df = pd.read_excel(DATA_RATING_PATH, sheet_name='Sheet2')
-            df['Tempat_id'] = pd.to_numeric(df['Tempat_id'], errors='coerce')
-            df = df.dropna(subset=['Nama_akun', 'Tempat_id'])
-            df['Tempat_id'] = df['Tempat_id'].astype(int)
-            cache["ratings"] = df
-            print(f"Loaded {len(df)} rating items")
-            return df
-        except Exception as e:
-            print(f"Error loading ratings: {e}")
-            return None
-    return None
 
 @app.route('/api/wisata', methods=['GET'])
 def get_wisata():
-    df = load_data()
-    if df is not None:
+    """Endpoint untuk mengambil semua daftar tempat wisata."""
+    try:
+        df_wisata = data_manager.load_wisata()
+        df_ratings = data_manager.load_ratings()
+        
+        if df_wisata is None:
+            return jsonify({"error": "Data tidak ditemukan"}), 404
+
+        # Hitung rata-rata rating untuk setiap tempat
+        avg_ratings = {}
+        if df_ratings is not None:
+            avg_ratings = df_ratings.groupby('Tempat_id')['Rating'].mean().to_dict()
+
         data = []
-        for _, row in df.iterrows():
+        for _, row in df_wisata.iterrows():
+            tid = int(row['tempat_id'])
+            raw_rating = avg_ratings.get(tid, 4.0)  # type: ignore
+            rating_val = float(round(float(raw_rating), 1))  # type: ignore
+            
             item = {
-                "id": int(row['tempat_id']),
+                "id": tid,
                 "name": row.get('Nama Wisata', 'Tanpa Nama'),
                 "type": row.get('Atribut', 'Umum'),
-                "rating": 4.5, 
-                "price": "Gratis",
-                "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=800"
+                "rating": rating_val, 
+                "price": "Gratis"
             }
+
+            # Logika penentuan Gambar (Mapping Kata Kunci)
+            img_url = str(row.get('image', row.get('Gambar', '')))
+            if not img_url or img_url.lower() == 'nan':
+                attr_lower = str(item['type']).lower()
+                name_lower = str(item['name']).lower()
+                
+                # Gunakan gambar lokal jika kata kunci cocok
+                if 'sentarum' in name_lower: img_url = "/images/sentarum.png"
+                elif 'betang' in name_lower or 'adat' in attr_lower: img_url = "/images/betang.png"
+                elif 'terjun' in name_lower or 'curug' in name_lower: img_url = "/images/terjun.png"
+                elif 'bukit' in name_lower or 'gunung' in name_lower: img_url = "/images/bukit.png"
+                else: 
+                    # Default jika tidak ada yang cocok
+                    img_url = f"https://picsum.photos/seed/{tid}/800/600"
+            
+            item["image"] = img_url
             data.append(item)
         return jsonify(data)
-    return jsonify({"error": "Data tidak ditemukan"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/rekomendasi', methods=['GET'])
 def get_rekomendasi():
-    target_id_raw = request.args.get('id')
-    print(f"Request Rekomendasi untuk ID: {target_id_raw}")
-    
-    df_wisata = load_data()
-    df_ratings = load_ratings()
-    
-    if df_wisata is None:
-        print("CRITICAL: df_wisata is None")
-        return jsonify({"error": "Data wisata tidak termuat"}), 500
-    
-    if df_ratings is None:
-        print("WARNING: df_ratings is None, collaborative filtering will be disabled")
-    else:
-        print(f"SUCCESS: Loaded {len(df_ratings)} ratings for calculation")
-
+    """Endpoint untuk memberikan rekomendasi berdasarkan tempat tertentu."""
     try:
-        # Resolve target_id
-        if not target_id_raw or target_id_raw in ['null', 'undefined', '']:
+        # Ambil ID acuan dan nilai K (Top-N) dari request
+        target_id_raw = request.args.get('id')
+        k = int(request.args.get('k', 3))
+        
+        df_wisata = data_manager.load_wisata()
+        df_ratings = data_manager.load_ratings()
+        
+        if df_wisata is None:
+            return jsonify({"error": "Database tidak bisa dimuat"}), 500
+
+        # Tentukan ID acuan, default ke data pertama jika tidak ada input
+        try:
+            target_id = int(float(target_id_raw)) if target_id_raw else int(df_wisata.iloc[0]['tempat_id'])
+        except:
             target_id = int(df_wisata.iloc[0]['tempat_id'])
-            print(f"Fallback ke ID pertama: {target_id}")
-        else:
-            try:
-                target_id = int(float(target_id_raw))
-            except:
-                target_id = int(df_wisata.iloc[0]['tempat_id'])
-                print(f"ID {target_id_raw} tidak valid, fallback: {target_id}")
 
         target_row = df_wisata[df_wisata['tempat_id'] == target_id]
-        if target_row.empty:
-            target_row = df_wisata.head(1)
-            target_id = int(target_row.iloc[0]['tempat_id'])
-            print(f"ID {target_id} tidak ada di DB, fallback ke pertama")
-
-        target_name = target_row.iloc[0].get('Nama Wisata')
-        target_type = str(target_row.iloc[0].get('Atribut', ''))
-        target_tags = set([t.strip().lower() for t in target_type.split(',') if t.strip()])
+        if target_row.empty: target_row = df_wisata.head(1)
         
-        # 1. Content-Based
-        others = df_wisata[df_wisata['tempat_id'] != target_id].copy()
-        content_scores = {}
-        for _, row in others.iterrows():
-            row_id = int(row['tempat_id'])
-            row_type = str(row.get('Atribut', ''))
-            row_tags = set([t.strip().lower() for t in row_type.split(',') if t.strip()])
-            intersection = target_tags.intersection(row_tags)
-            union = target_tags.union(row_tags)
-            content_scores[row_id] = len(intersection) / len(union) if union else 0
+        target_name = target_row.iloc[0].get('Nama Wisata')
+        target_img = target_row.iloc[0].get('image', f"https://picsum.photos/seed/{target_id}/800/600")
 
-        # 2. Collaborative (Interest)
-        collab_scores = {int(row_id): 0.0 for row_id in content_scores.keys()}
+        # Hitung rating rata-rata untuk semua tempat sekali saja
+        avg_ratings_map = {}
         if df_ratings is not None:
-            # Force target_id to int for comparison
-            tid = int(target_id)
-            df_ratings['Tempat_id'] = pd.to_numeric(df_ratings['Tempat_id'], errors='coerce').fillna(0).astype(int)
-            
-            # A. Personal Interest (Irisan User)
-            users_who_liked_target = df_ratings[df_ratings['Tempat_id'] == tid]['Nama_akun'].unique()
-            if len(users_who_liked_target) > 0:
-                other_ratings = df_ratings[(df_ratings['Nama_akun'].isin(users_who_liked_target)) & (df_ratings['Tempat_id'] != tid)]
-                counts = other_ratings['Tempat_id'].value_counts(normalize=True)
-                for rid, score in counts.items():
-                    rid_int = int(rid)
-                    if rid_int in collab_scores: 
-                        collab_scores[rid_int] = float(score) * 0.8
-            
-            # B. Global Popularity Fallback (Stronger fallback)
-            all_counts = df_ratings['Tempat_id'].value_counts(normalize=True)
-            for rid, pop_score in all_counts.items():
-                rid_int = int(rid)
-                if rid_int in collab_scores:
-                    collab_scores[rid_int] += float(pop_score) * 0.3
-            
-            # C. Boost for Visibility (Scale up if any data exists)
-            active_vals = [v for v in collab_scores.values() if v > 0]
-            print(f"DEBUG: Found {len(active_vals)} items with collab scores > 0")
-            if active_vals:
-                max_c = max(active_vals)
-                print(f"DEBUG: Max Collab Score before scaling: {max_c}")
-                for rid in collab_scores:
-                    if collab_scores[rid] > 0:
-                        # Scale to 0.15 - 0.95 range for visual impact
-                        collab_scores[rid] = 0.15 + (collab_scores[rid] / max_c) * 0.8
-            else:
-                print("DEBUG: NO COLLAB SCORES FOUND AT ALL")
+            avg_ratings_map = df_ratings.groupby('Tempat_id')['Rating'].mean().to_dict()
 
-        # 3. Hybrid
+        # Jalankan Logika Algoritma (Engine)
+        scores_list = recommender_engine.calculate_hybrid_scores(target_id, df_wisata, df_ratings)
+        
+        # Susun data hasil rekomendasi
         recommendations = []
-        for rid in content_scores.keys():
-            row_data = df_wisata[df_wisata['tempat_id'] == rid].iloc[0]
-            final_score = (content_scores[rid] * 0.6) + (collab_scores[rid] * 0.4)
-            display_score = min(99, int(final_score * 100) + 40)
+        for s in scores_list:
+            row_data = df_wisata[df_wisata['tempat_id'] == s['rid']].iloc[0]
+            actual_rating = float(round(avg_ratings_map.get(s['rid'], 4.0), 1))  # type: ignore
             
             recommendations.append({
-                "id": int(rid),
+                "id": s['rid'],
                 "name": row_data.get('Nama Wisata'),
-                "score": f"{display_score}%",
+                "score": f"{int(s['final_score'] * 100)}%",
                 "breakdown": {
-                    "content": f"{int(content_scores[rid] * 100)}%",
-                    "collaborative": "42%"
+                    "content": f"{int(s['content_p'] * 100)}%",
+                    "collaborative": f"{int(s['collab_p'] * 100)}%"
                 },
-                "rating": 4.8,
+                "rating": actual_rating,
                 "type": str(row_data.get('Atribut', '')),
-                "reason": "Hasil perhitungan Hybrid: kecocokan kategori (60%) + pola minat pengunjung (40%)",
-                "image": "https://images.unsplash.com/photo-1433086566608-5732f1ea4e0d?auto=format&fit=crop&q=80&w=800"
+                "reason": f"Kesesuaian Kategori ({int(s['content_p']*100)}%) & Minat User Umum ({int(s['collab_p']*100)}%)",
+                "image": str(row_data.get('image', row_data.get('Gambar', f"https://picsum.photos/seed/{s['rid']}/800/600")))
             })
+            
+        # Urutkan berdasarkan skor tertinggi dan ambil Top-K
+        results = sorted(recommendations, key=lambda x: int(x['score'].replace('%','')), reverse=True)
+        results = results[:k]  # type: ignore
+
+        # Hitung metrik presisi & recall secara real-time untuk tampilan
+        target_attr = set([t.strip().lower() for t in str(target_row.iloc[0].get('Atribut', '')).split(',') if t.strip()])
+        relevance_list = []
+        for res in results:
+            res_attr = set([t.strip().lower() for t in str(res.get('type', '')).split(',') if t.strip()])
+            if target_attr.intersection(res_attr):
+                relevance_list.append(1)
+            else:
+                relevance_list.append(0)
+            
+        precision = float(sum(relevance_list)) / len(results) if results else 0.0
+
+        # Hitung Recall Real-time untuk item ini
+        rel_others_found = []
+        for _, r in df_wisata.iterrows():
+            if int(r['tempat_id']) == target_id: continue
+            r_attr = set([t.strip().lower() for t in str(r.get('Atribut', '')).split(',') if t.strip()])
+            if target_attr.intersection(r_attr):
+                rel_others_found.append(1)
         
-        results = sorted(recommendations, key=lambda x: int(x['score'].replace('%','')), reverse=True)[:3]
-        return jsonify({"acuan": {"id": target_id, "name": target_name}, "results": results})
+        total_rel_in_db = float(len(rel_others_found))
+        recall = float(sum(relevance_list)) / total_rel_in_db if total_rel_in_db > 0 else 1.0
+        f1 = float((2 * precision * recall) / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+        return jsonify({
+            "acuan": {"id": target_id, "name": target_name, "image": target_img}, 
+            "results": results,
+            "metrics": {
+                "precision": f"{precision*100:.1f}%",
+                "recall": f"{recall*100:.1f}%",
+                "f1": f"{f1*100:.1f}%",
+                "k": k
+            }
+        })
 
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/statistik', methods=['GET'])
-def get_statistik():
-    df = load_data()
-    if df is not None:
-        all_categories = []
-        for cat_str in df['Atribut'].dropna():
-            all_categories.extend([c.strip().capitalize() for c in str(cat_str).split(',') if c.strip()])
-        cat_counts = pd.Series(all_categories).value_counts().head(5)
-        return jsonify({
-            "barData": {"labels": cat_counts.index.tolist(), "datasets": [{"label": "Jumlah Wisata", "data": cat_counts.values.tolist(), "backgroundColor": 'rgba(16, 185, 129, 0.8)'}]},
-            "pieData": {"labels": ['Bintang 5', 'Bintang 4', 'Bintang 3', 'Bintang 2', 'Bintang 1'], "datasets": [{"data": [40, 35, 15, 7, 3], "backgroundColor": ['#10b981', '#8b5cf6', '#0ea5e9', '#f59e0b', '#f43f5e']}]},
-            "topPerformers": [{"name": row.get('Nama Wisata'), "count": f"{1000+(i*200)} kunjungan", "trend": "+12%", "color": "from-emerald-500 to-emerald-600"} for i, (_, row) in enumerate(df.sample(min(3, len(df))).iterrows())]
-        })
-    return jsonify({"error": "Data tidak ditemukan"}), 404
+@app.route('/api/metrics', methods=['GET'])
+def get_metrics():
+    """Endpoint untuk pengujian sistem (akurasi keseluruhan)."""
+    df_wisata = data_manager.load_wisata()
+    df_ratings = data_manager.load_ratings()
+    m = metrics_engine.calculate_system_metrics(df_wisata, df_ratings)
+    if not m: return jsonify({"error": "Gagal menghitung metrik"}), 500
+    
+    return jsonify({
+        "precision": m['precision'],
+        "recall": m['recall'],
+        "f1_score": m['f1'],
+        "total_data": len(df_wisata),
+        "method": "Leave-One-Out Cross-Validation"
+    })
 
 @app.route('/api/summary', methods=['GET'])
 def get_summary():
-    df = load_data()
-    if df is not None:
-        return jsonify({"total_destinasi": f"{len(df)}+", "avg_rating": "4.7", "populer_count": str(max(12, len(df)//3)), "users_active": "1.2k"})
-    return jsonify({"error": "Data tidak ditemukan"}), 404
+    """Mengambil ringkasan data untuk halaman Beranda."""
+    try:
+        df_wisata = data_manager.load_wisata()
+        df_ratings = data_manager.load_ratings()
+        
+        total_destinasi = len(df_wisata) if df_wisata is not None else 0
+        avg_rating = 0
+        users_active = 0
+        populer_count = 0
+
+        if df_ratings is not None:
+            avg_rating = float(round(float(df_ratings['Rating'].mean()), 1))  # type: ignore
+            users_active = int(df_ratings['Nama_akun'].nunique())
+            
+            # Hanya hitung tempat populer yang benar-benar ada di daftar wisata
+            valid_ids = df_wisata['tempat_id'].values
+            populer_ids = df_ratings[df_ratings['Rating'] >= 4.5]['Tempat_id'].unique()
+            populer_count = int(len([rid for rid in populer_ids if rid in valid_ids]))
+
+        return jsonify({
+            "total_destinasi": total_destinasi,
+            "avg_rating": avg_rating,
+            "populer_count": populer_count,
+            "users_active": users_active
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/statistik', methods=['GET'])
+def get_statistik():
+    """Mengambil data visualisasi untuk halaman Statistik."""
+    try:
+        df_wisata = data_manager.load_wisata()
+        df_ratings = data_manager.load_ratings()
+
+        if df_wisata is None or df_ratings is None:
+            return jsonify({"error": "Data tidak lengkap"}), 404
+
+        # 1. Distribusi Rating (Pie Chart)
+        rating_counts = df_ratings['Rating'].value_counts().sort_index()
+        pieData = {
+            "labels": [f"Rating {r}" for r in rating_counts.index],
+            "datasets": [{
+                "data": [int(v) for v in rating_counts.values],
+                "backgroundColor": ['#fbbf24', '#f59e0b', '#d97706', '#b45309', '#10b981'],
+                "borderWidth": 0
+            }]
+        }
+
+        # 2. Populer Kategori (Bar Chart)
+        cat_counts = df_wisata['Atribut'].str.split(',').explode().str.strip().replace('', np.nan).dropna().value_counts().head(5)
+        barData = {
+            "labels": [str(x) for x in cat_counts.index.tolist()],
+            "datasets": [{
+                "label": 'Jumlah Destinasi',
+                "data": [int(v) for v in cat_counts.values],
+                "backgroundColor": '#10b981',
+                "borderRadius": 8
+            }]
+        }
+
+        # 3. Top Performers (Berdasarkan Rating Tertinggi)
+        top_ratings = df_ratings.groupby('Tempat_id')['Rating'].mean().sort_values(ascending=False).head(5)
+        topPerformers = []
+        for tid, score in top_ratings.items():
+            name = df_wisata[df_wisata['tempat_id'] == tid]['Nama Wisata'].iloc[0] if tid in df_wisata['tempat_id'].values else "Umum"
+            topPerformers.append({
+                "name": name,
+                "count": f"{score:.1f} ★"
+            })
+
+        return jsonify({
+            "pieData": pieData,
+            "barData": barData,
+            "topPerformers": topPerformers,
+            "total_destinasi": len(df_wisata),
+            "avg_rating": float(round(float(df_ratings['Rating'].mean()), 2))  # type: ignore
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/health', methods=['GET'])
+def get_health():
+    """Cek status kesehatan server dan data."""
+    df_wisata = data_manager.load_wisata()
+    df_ratings = data_manager.load_ratings()
+    return jsonify({
+        "total_wisata": len(df_wisata) if df_wisata is not None else 0,
+        "total_ratings": len(df_ratings) if df_ratings is not None else 0,
+        "healthy": df_wisata is not None
+    })
 
 if __name__ == '__main__':
+    # Jalankan server Flask
     app.run(debug=True, port=5000)

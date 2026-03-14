@@ -1,0 +1,354 @@
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Star, MapPin, Search, CheckCircle2, SlidersHorizontal, Grid, Map as MapIcon, Loader2, Database, ChevronLeft, ChevronRight } from 'lucide-react'
+
+export default function DaftarWisata() {
+  const [tourismData, setTourismData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeCategory, setActiveCategory] = useState('Semua')
+  const [sortBy, setSortBy] = useState('Default')
+  const [viewMode, setViewMode] = useState('grid') // modes: grid, database
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(6)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/wisata')
+        const data = await response.json()
+        setTourismData(data)
+        
+        const savedId = localStorage.getItem('selectedWisataId')
+        if (savedId) {
+          setSelectedId(parseInt(savedId))
+        } else if (data.length > 0) {
+          setSelectedId(data[0].id)
+          localStorage.setItem('selectedWisataId', data[0].id)
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, activeCategory, sortBy])
+
+  const handleSelect = (id) => {
+    setSelectedId(id)
+    localStorage.setItem('selectedWisataId', id)
+  }
+
+  const categories = ['Semua', 'Alam', 'Budaya', 'Religi', 'Kuliner', 'Taman']
+
+  const filteredDestinations = tourismData
+    .filter(item =>
+      (item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       item.type?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (activeCategory === 'Semua' || item.type?.toLowerCase().includes(activeCategory.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (sortBy === 'Rating') return (b.rating || 0) - (a.rating || 0)
+      if (sortBy === 'Nama') return (a.name || '').localeCompare(b.name || '')
+      return 0
+    })
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredDestinations.slice(indexOfFirstItem, indexOfLastItem)
+  const totalPages = Math.ceil(filteredDestinations.length / itemsPerPage)
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="space-y-8 pb-16">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 text-emerald-600 font-bold text-[10px] tracking-widest uppercase">
+            <MapIcon size={12} />
+            <span>Destinasi Kapuas • {filteredDestinations.length} Lokasi</span>
+          </div>
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Katalog Wisata</h1>
+          <p className="text-slate-500 text-sm font-medium">Temukan inspirasi perjalanan Anda.</p>
+        </div>
+        <div className="flex p-1 bg-white shadow-sm border border-slate-100 rounded-xl">
+          <button 
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-emerald-50 text-emerald-600 shadow-inner' : 'text-slate-300 hover:text-slate-400'}`}
+          >
+            <Grid size={18} />
+          </button>
+          <button 
+            onClick={() => setViewMode('database')}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'database' ? 'bg-emerald-50 text-emerald-600 shadow-inner' : 'text-slate-300 hover:text-slate-400'}`}
+          >
+            <Database size={18} />
+          </button>
+        </div>
+      </header>
+
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="flex-1 relative group">
+            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+              <Search className="text-slate-300 group-focus-within:text-emerald-500 transition-colors" size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Cari destinasi..."
+              className="w-full bg-white pl-12 pr-6 py-4 rounded-2xl border border-slate-200 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-50 focus:border-emerald-500 transition-all font-semibold text-slate-700 placeholder:text-slate-300 text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              className="px-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm font-black text-slate-600 text-[10px] uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-emerald-50 appearance-none min-w-[140px] text-center"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="Default">URUTKAN</option>
+              <option value="Rating">RATING TERTINGGI</option>
+              <option value="Nama">NAMA (A-Z)</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-6 py-2 rounded-xl text-[11px] font-black tracking-widest uppercase transition-all ${activeCategory === cat
+                ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100'
+                : 'bg-white text-slate-400 border border-slate-50 hover:border-emerald-100 hover:text-emerald-600 hover:shadow-sm'
+                }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {viewMode === 'database' ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="glass-card overflow-hidden border-white/60 p-0"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">ID</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Destinasi</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Atribut/Kategori</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {currentItems.map((item) => (
+                  <tr key={item.id} className={`hover:bg-emerald-50/20 transition-colors ${selectedId === item.id ? 'bg-emerald-50/40' : ''}`}>
+                    <td className="px-6 py-4">
+                       <span className="font-mono font-bold text-slate-500 text-xs">#{item.id}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                       <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                       <div className="flex flex-wrap gap-1">
+                         {item.type.split(',').map(t => (
+                           <span key={t} className="px-2 py-0.5 bg-white border border-slate-100 rounded-md text-[9px] font-bold text-slate-500">
+                             {t.trim()}
+                           </span>
+                         ))}
+                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                       <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                          <span className="text-[10px] font-black text-emerald-600 uppercase">Synced</span>
+                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                       <button 
+                         onClick={() => handleSelect(item.id)}
+                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${selectedId === item.id ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-emerald-100'}`}
+                       >
+                         {selectedId === item.id ? 'Terpilih' : 'Pilih'}
+                       </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {loading ? (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4 text-slate-400">
+            <Loader2 className="animate-spin" size={48} />
+            <p className="font-bold">Memuat data wisata...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {currentItems.map((item, i) => (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => handleSelect(item.id)}
+              className={`group relative bg-white rounded-[32px] overflow-hidden border cursor-pointer transition-all duration-500 transform
+                ${selectedId === item.id
+                  ? 'border-emerald-500 shadow-2xl shadow-emerald-200/40 ring-8 ring-emerald-50'
+                  : 'border-transparent shadow-xl shadow-slate-200/30 hover:shadow-2xl hover:shadow-emerald-100/50 hover:border-emerald-200'
+                }`}
+            >
+              <div className="relative h-64 overflow-hidden">
+                <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                  <span className="bg-white/95 backdrop-blur-md px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-emerald-600 border border-white/50 shadow-xl self-start">
+                    {item.type}
+                  </span>
+                  {item.rating >= 4.8 && (
+                    <span className="bg-amber-500/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white border border-amber-400/50 shadow-lg flex items-center gap-1.5">
+                      <Star size={10} fill="currentColor" /> Top Choice
+                    </span>
+                  )}
+                </div>
+
+                <AnimatePresence>
+                  {selectedId === item.id && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-emerald-600/20 backdrop-blur-[2px] flex items-center justify-center"
+                    >
+                      <motion.div
+                        initial={{ scale: 0, rotate: -45 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        className="bg-white p-5 rounded-full shadow-2xl border-4 border-emerald-50"
+                      >
+                        <CheckCircle2 size={40} className="text-emerald-600" />
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="p-7">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-xl font-black text-slate-800 leading-tight">{item.name}</h3>
+                  <div className="flex items-center gap-1.5 bg-amber-50 text-amber-500 px-2.5 py-1 rounded-lg">
+                    <Star size={14} fill="currentColor" />
+                    <span className="text-xs font-black">{item.rating}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] mb-6 uppercase tracking-widest">
+                  <MapPin size={14} className="text-emerald-500" />
+                  <span>Kuala Kapuas</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-5 border-t border-slate-50">
+                  <div>
+                    <p className="text-[8px] uppercase font-black text-slate-300 tracking-widest mb-0.5">Tiket</p>
+                    <p className="text-lg font-black text-slate-700">{item.price}</p>
+                  </div>
+                  <button
+                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                      ${selectedId === item.id
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
+                        : 'bg-slate-50 text-slate-400 hover:bg-emerald-600 hover:text-white hover:shadow-md'
+                      }`}
+                  >
+                    {selectedId === item.id ? 'Terpilih' : 'Pilih Acuan'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+      )}
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 pt-8">
+           <button
+             onClick={() => paginate(currentPage - 1)}
+             disabled={currentPage === 1}
+             className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-200 disabled:opacity-30 disabled:hover:text-slate-400 transition-all shadow-sm"
+           >
+             <ChevronLeft size={20} />
+           </button>
+           
+           <div className="flex gap-2">
+             {[...Array(totalPages)].map((_, idx) => (
+               <button
+                 key={idx + 1}
+                 onClick={() => paginate(idx + 1)}
+                 className={`w-12 h-12 rounded-2xl font-black text-sm transition-all ${currentPage === idx + 1 
+                   ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100' 
+                   : 'bg-white text-slate-400 border border-slate-100 hover:border-emerald-100 hover:text-emerald-600'}`}
+               >
+                 {idx + 1}
+               </button>
+             ))}
+           </div>
+
+           <button
+             onClick={() => paginate(currentPage + 1)}
+             disabled={currentPage === totalPages}
+             className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-200 disabled:opacity-30 disabled:hover:text-slate-400 transition-all shadow-sm"
+           >
+             <ChevronRight size={20} />
+           </button>
+        </div>
+      )}
+
+      {filteredDestinations.length === 0 && !loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="py-32 text-center space-y-6 glass-card border-dashed border-2"
+        >
+          <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200 border-2 border-slate-100">
+            <Search size={48} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-2xl font-black text-slate-400 tracking-tight">Oops! Destinasi tidak ditemukan.</p>
+            <p className="text-slate-400 font-medium max-w-sm mx-auto">Coba gunakan kata kunci lain atau ubah filter kategori Anda.</p>
+          </div>
+          <button
+            onClick={() => { setSearchTerm(''); setActiveCategory('Semua'); }}
+            className="text-emerald-600 font-black hover:text-emerald-700 transition-colors bg-emerald-50 px-8 py-3 rounded-xl border border-emerald-100"
+          >
+            Reset Semua Filter
+          </button>
+        </motion.div>
+      )}
+    </div>
+  )
+}

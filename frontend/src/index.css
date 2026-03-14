@@ -1,0 +1,4 @@
+/* Main Entry untuk CSS - Mengimpor semua modul gaya */
+@import "./assets/styles/base.css";
+@import "./assets/styles/animations.css";
+@import "./assets/styles/utilities.css";

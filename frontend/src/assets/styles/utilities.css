@@ -1,0 +1,58 @@
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+@utility glass-card-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.85);
+    transform: translateY(-4px);
+    box-shadow:
+      0 20px 25px -5px rgba(0, 0, 0, 0.05),
+      0 10px 10px -5px rgba(0, 0, 0, 0.02),
+      0 0 0 3px rgba(16, 185, 129, 0.05);
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+}
+
+@utility gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
+}
+
+@utility btn-primary {
+  @apply relative overflow-hidden transition-all duration-300 transform active:scale-95;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 0.75rem 1.75rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.3);
+
+  &:hover {
+    box-shadow: 0 15px 30px -8px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+  }
+}
+
+@utility sidebar-link {
+  @apply flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-semibold;
+  color: #64748b;
+
+  &:hover {
+    @apply bg-white/80 text-emerald-600 translate-x-1 shadow-sm;
+  }
+
+  &.active {
+    @apply bg-emerald-600 text-white shadow-xl shadow-emerald-200/50 scale-105;
+  }
+}
