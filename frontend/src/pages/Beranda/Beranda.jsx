@@ -160,7 +160,7 @@ export default function Beranda() {
               </div>
 
               <motion.button
-                onClick={() => navigate('/rekomendasi')}
+                onClick={() => navigate('/daftar-wisata')}
                 onMouseMove={handleButtonMove}
                 onMouseLeave={handleButtonLeave}
                 style={{ x: buttonX, y: buttonY }}
