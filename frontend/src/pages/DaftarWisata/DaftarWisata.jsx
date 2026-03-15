@@ -22,7 +22,8 @@ export default function DaftarWisata() {
       try {
         const response = await fetch('http://localhost:5000/api/wisata')
         const data = await response.json()
-        setWisata(data || [])
+        // Pastikan data adalah array agar tidak error saat di-filter
+        setWisata(Array.isArray(data) ? data : [])
       } catch (error) {
         console.error("Error fetching data:", error)
       } finally {

@@ -48,7 +48,7 @@ def get_wisata():
             # Logika penentuan Gambar (Mapping Kata Kunci)
             img_url = str(row.get('image', row.get('Gambar', '')))
             if not img_url or img_url.lower() == 'nan':
-                attr_lower = str(item['type']).lower()
+                attr_lower = str(item['kategori']).lower()
                 name_lower = str(item['name']).lower()
                 
                 # Gunakan gambar lokal jika kata kunci cocok

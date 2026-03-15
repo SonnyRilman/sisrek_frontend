@@ -166,7 +166,7 @@ export default function Rekomendasi() {
               className="absolute inset-0 w-full h-full object-cover grayscale-[0.2] transition-transform duration-[3000ms] group-hover:scale-105"
               alt={data.acuan.name}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
             
             <div className="absolute inset-x-0 bottom-0 p-12 md:p-16 space-y-6">
               <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-emerald-500/90 backdrop-blur-xl rounded-2xl border border-white/20">

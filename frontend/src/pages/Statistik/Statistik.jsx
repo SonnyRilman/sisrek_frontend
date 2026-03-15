@@ -184,7 +184,7 @@ export default function Statistik() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-4 bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl flex flex-col relative overflow-hidden"
+          className="lg:col-span-4 bg-gradient-to-br from-emerald-600 to-teal-700 p-10 rounded-[3.5rem] text-white shadow-2xl flex flex-col relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <TrendingUp size={120} />
