@@ -23,16 +23,16 @@ def load_wisata():
         try:
             df = pd.read_excel(DATA_WISATA_PATH)
             
-            # Bersihkan kolom tempat_id dari nilai NaN dan ubah ke integer
-            df['tempat_id'] = pd.to_numeric(df['tempat_id'], errors='coerce')
-            df = df.dropna(subset=['tempat_id'])
-            df['tempat_id'] = df['tempat_id'].astype(int)
+            # Bersihkan kolom Tempat_id dari nilai NaN dan ubah ke integer
+            df['Tempat_id'] = pd.to_numeric(df['Tempat_id'], errors='coerce')
+            df = df.dropna(subset=['Tempat_id'])
+            df['Tempat_id'] = df['Tempat_id'].astype(int)
             
             # Isi semua sel kosong dengan string kosong
             df = df.fillna('')
             
-            # Buat kolom baru combined_features yang isinya sama dengan kolom Atribut
-            df['combined_features'] = df['Atribut'].astype(str)
+            # Buat kolom baru combined_features yang isinya sama dengan kolom Deskripsi
+            df['combined_features'] = df['Deskripsi'].astype(str)
             
             _cache["wisata"] = df
             print(f"DEBUG: Berhasil memuat {len(df)} data wisata")

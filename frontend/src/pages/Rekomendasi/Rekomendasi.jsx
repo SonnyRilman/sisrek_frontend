@@ -184,17 +184,16 @@ export default function Rekomendasi() {
           </motion.section>
 
           {/* Detailed Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-8">
             {[
-              { label: 'Kategori Utama', value: data.acuan.kategori || 'Alam & Petualangan', icon: Compass, color: 'text-sky-500' },
-              { label: 'Fasilitas Terverifikasi', value: data.acuan.fasilitas || 'Standar Destinasi', icon: Award, color: 'text-emerald-500' }
+              { label: 'Kategori Wisata', value: data.acuan.kategori || 'Alam & Petualangan', icon: Compass, color: 'text-sky-500' }
             ].map((item, i) => (
               <motion.div 
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 + (i * 0.1) }}
-                className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/10 flex items-start gap-6"
+                className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/10 flex items-start gap-6 max-w-2xl"
               >
                 <div className={`p-4 rounded-2.5xl bg-emerald-50 ${item.color}`}>
                   <item.icon size={24} />

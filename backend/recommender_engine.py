@@ -20,7 +20,7 @@ def calculate_hybrid_scores(target_id, df_wisata, df_ratings):
     
     # Cari index baris untuk destinasi acuan
     try:
-        target_idx = df_wisata[df_wisata['tempat_id'] == target_id].index[0]
+        target_idx = df_wisata[df_wisata['Tempat_id'] == target_id].index[0]
         # Kita butuh index posisi (0, 1, 2...) bukan label index
         target_pos = df_wisata.index.get_loc(target_idx)
     except (IndexError, KeyError):
@@ -33,8 +33,8 @@ def calculate_hybrid_scores(target_id, df_wisata, df_ratings):
     # Bangun matriks user-item (Nama_akun x Tempat_id)
     user_item_matrix = df_ratings.pivot_table(index='Nama_akun', columns='Tempat_id', values='Rating').fillna(0)
     
-    # Pastikan semua tempat_id dari df_wisata masuk ke kolom (meskipun tidak ada di rating)
-    all_place_ids = df_wisata['tempat_id'].unique()
+    # Pastikan semua Tempat_id dari df_wisata masuk ke kolom (meskipun tidak ada di rating)
+    all_place_ids = df_wisata['Tempat_id'].unique()
     for pid in all_place_ids:
         if pid not in user_item_matrix.columns:
             user_item_matrix[pid] = 0.0
@@ -99,7 +99,7 @@ def calculate_hybrid_scores(target_id, df_wisata, df_ratings):
     # --- 3. HYBRID & SELECTION ---
     final_results = []
     for pos, (i, row) in enumerate(df_wisata.iterrows()):
-        pid = int(row['tempat_id'])
+        pid = int(row['Tempat_id'])
         if pid == target_id: continue
         
         cbf_val = cbf_scores_array[pos]

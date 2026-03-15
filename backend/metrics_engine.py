@@ -14,7 +14,7 @@ def calculate_system_metrics(df_wisata, df_ratings, top_k=3):
 
     # Iterasi setiap tempat wisata sebagai destinasi acuan (Target d)
     for _, target_row in df_wisata.iterrows():
-        target_id = int(target_row['tempat_id'])
+        target_id = int(target_row['Tempat_id'])
         
         # 1. Cari user yang pernah memberi rating pada destinasi acuan ini
         users_who_rated = df_ratings[df_ratings['Tempat_id'] == target_id]['Nama_akun'].unique()

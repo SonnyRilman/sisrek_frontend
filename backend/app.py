@@ -33,14 +33,14 @@ def get_wisata():
 
         data = []
         for _, row in df_wisata.iterrows():
-            tid = int(row['tempat_id'])
+            tid = int(row['Tempat_id'])
             raw_rating = avg_ratings.get(tid, 4.0)  # type: ignore
             rating_val = float(round(float(raw_rating), 1))  # type: ignore
             
             item = {
                 "id": tid,
                 "name": row.get('Nama Wisata', 'Tanpa Nama'),
-                "type": row.get('Atribut', 'Umum'),
+                "kategori": row.get('Deskripsi', 'Umum'),
                 "rating": rating_val, 
                 "price": "Gratis"
             }
@@ -82,18 +82,16 @@ def get_rekomendasi():
 
         # Tentukan ID acuan, default ke data pertama jika tidak ada input
         try:
-            target_id = int(float(target_id_raw)) if target_id_raw else int(df_wisata.iloc[0]['tempat_id'])
+            target_id = int(float(target_id_raw)) if target_id_raw else int(df_wisata.iloc[0]['Tempat_id'])
         except:
-            target_id = int(df_wisata.iloc[0]['tempat_id'])
+            target_id = int(df_wisata.iloc[0]['Tempat_id'])
 
-        target_row = df_wisata[df_wisata['tempat_id'] == target_id]
+        target_row = df_wisata[df_wisata['Tempat_id'] == target_id]
         if target_row.empty: target_row = df_wisata.head(1)
         
         target_name = target_row.iloc[0].get('Nama Wisata')
         target_img = target_row.iloc[0].get('image', f"https://picsum.photos/seed/{target_id}/800/600")
-        target_kategori = target_row.iloc[0].get('Atribut', 'Umum')
-        # Thesis Note: data actual tidak punya kolom Fasilitas, gunakan Atribut
-        target_fasilitas = target_row.iloc[0].get('Atribut', '-')
+        target_kategori = target_row.iloc[0].get('Deskripsi', 'Umum')
 
         # Hitung rating rata-rata untuk semua tempat sekali saja
         avg_ratings_map = {}
@@ -106,7 +104,7 @@ def get_rekomendasi():
         # Susun data hasil rekomendasi
         recommendations = []
         for s in scores_list:
-            row_data = df_wisata[df_wisata['tempat_id'] == s['rid']].iloc[0]
+            row_data = df_wisata[df_wisata['Tempat_id'] == s['rid']].iloc[0]
             actual_rating = float(round(avg_ratings_map.get(s['rid'], 4.0), 1))  # type: ignore
             
             recommendations.append({
@@ -118,7 +116,7 @@ def get_rekomendasi():
                     "collaborative": f"{int(s['collab_p'] * 100)}%"
                 },
                 "rating": actual_rating,
-                "type": str(row_data.get('Atribut', '')),
+                "type": str(row_data.get('Deskripsi', '')),
                 "reason": f"Kesesuaian Kategori ({int(s['content_p']*100)}%) & Minat User Umum ({int(s['collab_p']*100)}%)",
                 "image": str(row_data.get('image', row_data.get('Gambar', f"https://picsum.photos/seed/{s['rid']}/800/600")))
             })
@@ -156,8 +154,7 @@ def get_rekomendasi():
                 "id": target_id, 
                 "name": target_name, 
                 "image": target_img,
-                "kategori": target_kategori,
-                "fasilitas": target_fasilitas
+                "kategori": target_kategori
             }, 
             "results": results,
             "metrics": {
@@ -205,7 +202,7 @@ def get_summary():
             users_active = int(df_ratings['Nama_akun'].nunique())
             
             # Hanya hitung tempat populer yang benar-benar ada di daftar wisata
-            valid_ids = df_wisata['tempat_id'].values
+            valid_ids = df_wisata['Tempat_id'].values
             populer_ids = df_ratings[df_ratings['Rating'] >= 4.5]['Tempat_id'].unique()
             populer_count = int(len([rid for rid in populer_ids if rid in valid_ids]))
 
@@ -236,8 +233,8 @@ def get_statistik():
             "values": [int(v) for v in rating_dist.values]
         }
 
-        # 2. Distribusi Kategori (Atribut)
-        cat_counts = df_wisata['Atribut'].str.split(',').explode().str.strip().value_counts()
+        # 2. Distribusi Kategori (Deskripsi)
+        cat_counts = df_wisata['Deskripsi'].str.split(',').explode().str.strip().value_counts()
         chart_kategori = {
             "labels": cat_counts.index.tolist()[:6], # Ambil top 6 kategori
             "values": cat_counts.values.tolist()[:6]
@@ -248,7 +245,7 @@ def get_statistik():
         top_ratings = df_ratings.groupby('Tempat_id')['Rating'].mean().sort_values(ascending=False).head(5)
         top_performers = []
         for tid, score in top_ratings.items():
-            name = df_wisata[df_wisata['tempat_id'] == tid]['Nama Wisata'].iloc[0] if tid in df_wisata['tempat_id'].values else f"ID {tid}"
+            name = df_wisata[df_wisata['Tempat_id'] == tid]['Nama Wisata'].iloc[0] if tid in df_wisata['Tempat_id'].values else f"ID {tid}"
             top_performers.append({
                 "name": name,
                 "score": f"{score:.1f} ★"
